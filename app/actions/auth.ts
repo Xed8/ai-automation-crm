@@ -40,7 +40,7 @@ export async function signup(formData: FormData) {
   const { error } = await supabase.auth.signUp(data)
 
   if (error) {
-    redirect('/register?message=Could not sign up user')
+    redirect(`/register?message=${encodeURIComponent(error.message)}`)
   }
 
   // Supabase auth auto-signs in by default on signup if email confirmation is disabled

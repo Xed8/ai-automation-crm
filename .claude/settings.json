@@ -26,7 +26,9 @@
       "Bash(powershell -Command \"Get-Command ngrok | Select-Object -ExpandProperty Source; \\(Get-Item \\(Get-Command ngrok\\).Source\\).VersionInfo.FileVersion\")",
       "Bash(powershell -Command \"winget install ngrok.ngrok --accept-source-agreements --accept-package-agreements\")",
       "Bash(powershell -Command \"gh --version\")",
-      "Bash(powershell -Command \"gh auth status\")"
+      "Bash(powershell -Command \"gh auth status\")",
+      "Bash(powershell -Command \"gh repo create ai-automation-crm --private --source=''c:\\\\Users\\\\ProfitVault\\\\Downloads\\\\Saas Project'' --remote=origin --push\")",
+      "Bash(powershell -Command \"cat ''c:\\\\Users\\\\ProfitVault\\\\Downloads\\\\Saas Project\\\\package.json''\")"
     ],
     "additionalDirectories": [
       "c:\\Users\\ProfitVault\\Downloads\\Saas Project\\app\\(dashboard)\\w\\[workspace_slug]\\automations"
