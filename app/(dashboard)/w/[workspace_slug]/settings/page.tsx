@@ -4,15 +4,11 @@ import {
   ArrowUpRight,
   BadgeCheck,
   ExternalLink,
-  Plus,
   RadioTower,
   Shield,
-  Trash2,
   TriangleAlert,
   Webhook,
 } from 'lucide-react'
-import { createOutboundWebhook, deleteOutboundWebhook, sendInboundWebhookTest } from '@/app/actions/integrations'
-import { upgradeToProAction, downgradeToFreeAction } from '@/app/actions/billing'
 import { createPrivilegedServerClient } from '@/lib/supabase/privileged'
 import { requireWorkspaceScope } from '@/lib/workspace-context'
 import { Badge } from '@/components/ui/badge'
@@ -27,11 +23,11 @@ import {
 } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { CopyButton } from '@/components/shared/copy-button'
 import { DeleteWorkspaceButton } from '@/components/shared/delete-workspace-button'
 import { PLAN_LIMITS } from '@/lib/billing/quotas'
+import { UpgradeButton, DowngradeButton } from '@/components/settings/billing-buttons'
+import { CreateWebhookForm, DeleteWebhookButton, SendTestLeadButton } from '@/components/settings/webhook-forms'
 
 function getBaseUrlFromHeaders(host: string | null, forwardedProto: string | null) {
   if (!host) {
@@ -102,7 +98,9 @@ function answer(answers, key) {
     return value[0] || '';
   }
   return value || '';
-}`
+}
+
+// Lead capture powered by LeadFlow — https://leadflow.app`
 }
 
 export default async function SettingsPage({
@@ -275,17 +273,13 @@ export default async function SettingsPage({
               </CardContent>
               <CardFooter className="flex flex-col items-start gap-3">
                 {tier === 'free' ? (
-                  <form action={upgradeToProAction.bind(null, workspace_slug)}>
-                    <Button type="submit">Upgrade to Pro</Button>
-                  </form>
+                  <UpgradeButton workspaceSlug={workspace_slug} />
                 ) : (
                   <div className="flex flex-wrap gap-2">
                     <p className="w-full text-sm text-muted-foreground">
                       You are on the <span className="font-medium capitalize text-foreground">{tier}</span> plan.
                     </p>
-                    <form action={downgradeToFreeAction.bind(null, workspace_slug)}>
-                      <Button type="submit" variant="outline" size="sm">Downgrade to Free</Button>
-                    </form>
+                    <DowngradeButton workspaceSlug={workspace_slug} />
                   </div>
                 )}
               </CardFooter>
@@ -481,14 +475,11 @@ export default async function SettingsPage({
                         </div>
 
                         <div className="mt-4 flex justify-end">
-                          <form action={sendInboundWebhookTest.bind(null, workspace_slug)}>
-                            <input type="hidden" name="formId" value={form.id} />
-                            <input type="hidden" name="baseUrl" value={baseUrl} />
-                            <Button type="submit" variant="outline" size="sm" className="justify-between">
-                              Send test lead
-                              <ArrowUpRight className="h-4 w-4" />
-                            </Button>
-                          </form>
+                          <SendTestLeadButton
+                            workspaceSlug={workspace_slug}
+                            formId={form.id}
+                            baseUrl={baseUrl}
+                          />
                         </div>
 
                         <div className="mt-4 rounded-lg border border-border bg-muted/30">
@@ -531,45 +522,7 @@ export default async function SettingsPage({
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <form action={createOutboundWebhook.bind(null, workspace_slug)} className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="eventType">Event type</Label>
-                    <select
-                      id="eventType"
-                      name="eventType"
-                      defaultValue="lead.created"
-                      className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-2 text-sm transition-colors focus-visible:border-ring focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/20"
-                    >
-                      <option value="lead.created">lead.created</option>
-                      <option value="lead.stage_changed">lead.stage_changed</option>
-                    </select>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="endpointUrl">Destination URL</Label>
-                    <Input
-                      id="endpointUrl"
-                      name="endpointUrl"
-                      type="url"
-                      placeholder="https://example.com/api/webhooks/crm"
-                      required
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="secret">Signing secret</Label>
-                    <Input
-                      id="secret"
-                      name="secret"
-                      placeholder="Optional. Leave blank to generate one."
-                    />
-                  </div>
-
-                  <Button type="submit" className="w-full justify-between">
-                    Save webhook
-                    <Plus className="h-4 w-4" />
-                  </Button>
-                </form>
+                <CreateWebhookForm workspaceSlug={workspace_slug} />
               </CardContent>
             </Card>
 
@@ -601,13 +554,7 @@ export default async function SettingsPage({
                           <div className="text-sm text-muted-foreground">Endpoint destination</div>
                         </div>
 
-                        <form action={deleteOutboundWebhook.bind(null, workspace_slug)}>
-                          <input type="hidden" name="webhookId" value={webhook.id} />
-                          <Button type="submit" variant="ghost" size="sm" className="w-full justify-between xl:w-auto">
-                            Remove
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </form>
+                        <DeleteWebhookButton workspaceSlug={workspace_slug} webhookId={webhook.id} />
                       </div>
 
                       <div className="mt-4 grid gap-3 xl:grid-cols-2">

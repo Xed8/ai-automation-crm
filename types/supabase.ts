@@ -12,6 +12,31 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "14.4"
   }
+  graphql_public: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json
+          operationName?: string
+          query?: string
+          variables?: Json
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
   public: {
     Tables: {
       activity_logs: {
@@ -515,6 +540,57 @@ export type Database = {
           },
         ]
       }
+      outbound_webhook_logs: {
+        Row: {
+          delivered_at: string
+          error_message: string | null
+          event_type: string
+          http_status: number | null
+          id: string
+          payload: Json
+          success: boolean
+          webhook_id: string
+          workspace_id: string
+        }
+        Insert: {
+          delivered_at?: string
+          error_message?: string | null
+          event_type: string
+          http_status?: number | null
+          id?: string
+          payload: Json
+          success?: boolean
+          webhook_id: string
+          workspace_id: string
+        }
+        Update: {
+          delivered_at?: string
+          error_message?: string | null
+          event_type?: string
+          http_status?: number | null
+          id?: string
+          payload?: Json
+          success?: boolean
+          webhook_id?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "outbound_webhook_logs_webhook_id_fkey"
+            columns: ["webhook_id"]
+            isOneToOne: false
+            referencedRelation: "outbound_webhooks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "outbound_webhook_logs_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       outbound_webhooks: {
         Row: {
           created_at: string
@@ -558,6 +634,7 @@ export type Database = {
       }
       profiles: {
         Row: {
+          avatar_url: string | null
           created_at: string
           email: string
           full_name: string | null
@@ -565,6 +642,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          avatar_url?: string | null
           created_at?: string
           email: string
           full_name?: string | null
@@ -572,6 +650,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          avatar_url?: string | null
           created_at?: string
           email?: string
           full_name?: string | null
@@ -981,6 +1060,9 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
+  graphql_public: {
+    Enums: {},
+  },
   public: {
     Enums: {
       workspace_role: ["owner", "admin", "member"],

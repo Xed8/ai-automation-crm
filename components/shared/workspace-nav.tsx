@@ -84,13 +84,13 @@ export function WorkspaceNav({
             key={item.label}
             href={href}
             className={cn(
-              'inline-flex min-w-fit items-center gap-2.5 rounded-md px-3 py-2 text-sm font-medium transition-colors duration-100',
+              'relative inline-flex min-w-fit items-center gap-2.5 rounded-md px-3 py-2 text-sm font-medium transition-all duration-150',
               isActive
-                ? 'bg-primary text-primary-foreground'
-                : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                ? 'bg-primary/10 text-primary before:absolute before:left-0 before:top-1 before:bottom-1 before:w-0.5 before:rounded-full before:bg-primary'
+                : 'text-muted-foreground hover:bg-muted/70 hover:text-foreground'
             )}
           >
-            <Icon className="h-4 w-4 shrink-0" />
+            <Icon className={cn('h-4 w-4 shrink-0', isActive ? 'text-primary' : '')} />
             <span>{item.label}</span>
           </Link>
         )

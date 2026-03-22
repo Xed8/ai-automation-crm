@@ -33,7 +33,11 @@ export function NotificationBell({ workspaceSlug, userId, workspaceId }: Notific
   const [unreadCount, setUnreadCount] = useState(0)
   const [isOpen, setIsOpen] = useState(false)
   const [isPending, startTransition] = useTransition()
+  const [cursor, setCursor] = useState<string | null>(null)
+  const [hasMore, setHasMore] = useState(false)
   const router = useRouter()
+
+  const PAGE_SIZE = 20
 
   // Fetch initial notifications
   useEffect(() => {
@@ -44,14 +48,20 @@ export function NotificationBell({ workspaceSlug, userId, workspaceId }: Notific
         .eq('workspace_id', workspaceId)
         .eq('user_id', userId)
         .order('created_at', { ascending: false })
-        .limit(20)
-      
-      if (data) setNotifications(data)
-      
+        .limit(PAGE_SIZE + 1)
+
+      if (data) {
+        const hasNextPage = data.length > PAGE_SIZE
+        const items = hasNextPage ? data.slice(0, PAGE_SIZE) : data
+        setNotifications(items)
+        setHasMore(hasNextPage)
+        setCursor(hasNextPage ? items[items.length - 1].created_at : null)
+      }
+
       const unreads = data?.filter(n => !n.is_read)?.length || 0
       setUnreadCount(unreads)
     }
-    
+
     fetchNotifications()
 
     // Realtime subscription (Phase 6 MVP robust update)
@@ -66,7 +76,7 @@ export function NotificationBell({ workspaceSlug, userId, workspaceId }: Notific
           filter: `user_id=eq.${userId}`
         },
         (payload: RealtimePostgresInsertPayload<Notification>) => {
-          setNotifications(prev => [payload.new, ...prev].slice(0, 20))
+          setNotifications(prev => [payload.new, ...prev].slice(0, PAGE_SIZE))
           setUnreadCount(prev => prev + 1)
         }
       )
@@ -88,6 +98,28 @@ export function NotificationBell({ workspaceSlug, userId, workspaceId }: Notific
         router.push(notification.link)
       }
       setIsOpen(false)
+    })
+  }
+
+  const handleLoadMore = () => {
+    if (!hasMore || isPending || !cursor) return
+    startTransition(async () => {
+      const { data } = await supabase
+        .from('notifications')
+        .select('*')
+        .eq('workspace_id', workspaceId)
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false })
+        .lt('created_at', cursor)
+        .limit(PAGE_SIZE + 1)
+
+      if (data) {
+        const hasNextPage = data.length > PAGE_SIZE
+        const items = hasNextPage ? data.slice(0, PAGE_SIZE) : data
+        setNotifications(prev => [...prev, ...items])
+        setHasMore(hasNextPage)
+        setCursor(hasNextPage ? items[items.length - 1].created_at : null)
+      }
     })
   }
 
@@ -139,8 +171,8 @@ export function NotificationBell({ workspaceSlug, userId, workspaceId }: Notific
           ) : (
             <div className="flex flex-col gap-1 p-1">
               {notifications.map((n) => (
-                <DropdownMenuItem 
-                  key={n.id} 
+                <DropdownMenuItem
+                  key={n.id}
                   className={`flex flex-col items-start gap-1 rounded-2xl p-3 ${!n.is_read ? 'bg-secondary/65 font-medium' : 'text-muted-foreground'}`}
                   onClick={() => handleNotificationClick(n)}
                 >
@@ -156,6 +188,19 @@ export function NotificationBell({ workspaceSlug, userId, workspaceId }: Notific
                   </span>
                 </DropdownMenuItem>
               ))}
+              {hasMore && (
+                <div className="px-1 pt-1">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="w-full text-xs text-muted-foreground"
+                    onClick={(e) => { e.stopPropagation(); handleLoadMore() }}
+                    disabled={isPending}
+                  >
+                    {isPending ? 'Loading…' : 'Load more'}
+                  </Button>
+                </div>
+              )}
             </div>
           )}
         </ScrollArea>

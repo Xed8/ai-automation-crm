@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { ArrowLeftRight, LogOut } from 'lucide-react'
+import { ArrowLeftRight, LogOut, UserCircle2 } from 'lucide-react'
 import { signout } from '@/app/actions/auth'
 import { BrandMark } from '@/components/shared/brand-mark'
 import { WorkspaceNav } from '@/components/shared/workspace-nav'
@@ -21,15 +21,15 @@ export default async function WorkspaceDashboardLayout({
   return (
     <div className="flex h-screen overflow-hidden bg-background">
       {/* Sidebar — desktop only */}
-      <aside className="hidden w-56 shrink-0 border-r border-border bg-card lg:flex lg:flex-col overflow-y-auto">
+      <aside className="hidden w-60 shrink-0 border-r border-border bg-sidebar lg:flex lg:flex-col overflow-y-auto">
         {/* Brand */}
-        <div className="flex h-14 shrink-0 items-center border-b border-border px-4">
+        <div className="flex h-14 shrink-0 items-center border-b border-border/60 px-4">
           <BrandMark href="/workspaces" compact />
         </div>
 
         {/* Workspace info */}
-        <div className="border-b border-border px-4 py-3">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">
+        <div className="border-b border-border/60 px-4 py-3.5">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-muted-foreground/70">
             Workspace
           </p>
           <p className="mt-1 truncate text-sm font-semibold leading-snug">{workspace.name}</p>
@@ -37,18 +37,34 @@ export default async function WorkspaceDashboardLayout({
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 px-2 py-3">
+        <nav className="flex-1 px-3 py-3">
           <WorkspaceNav workspaceSlug={workspace_slug} />
         </nav>
 
         {/* User footer */}
-        <div className="space-y-0.5 border-t border-border px-2 py-2">
-          <div className="truncate px-3 py-1.5 text-xs text-muted-foreground">{user.email}</div>
+        <div className="space-y-0.5 border-t border-border/60 px-3 py-3">
+          <div className="flex items-center gap-2 px-2 py-1.5">
+            <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/15 text-[10px] font-bold text-primary">
+              {user.email?.[0]?.toUpperCase() ?? '?'}
+            </div>
+            <span className="truncate text-xs text-muted-foreground">{user.email}</span>
+          </div>
           <Button
             asChild
             variant="ghost"
             size="sm"
-            className="h-8 w-full justify-start text-xs font-normal"
+            className="h-8 w-full justify-start text-xs font-normal text-muted-foreground hover:text-foreground"
+          >
+            <Link href={`/w/${workspace_slug}/settings/profile`}>
+              <UserCircle2 className="mr-2 h-3.5 w-3.5" />
+              Profile
+            </Link>
+          </Button>
+          <Button
+            asChild
+            variant="ghost"
+            size="sm"
+            className="h-8 w-full justify-start text-xs font-normal text-muted-foreground hover:text-foreground"
           >
             <Link href="/workspaces">
               <ArrowLeftRight className="mr-2 h-3.5 w-3.5" />
@@ -59,7 +75,7 @@ export default async function WorkspaceDashboardLayout({
             <Button
               variant="ghost"
               size="sm"
-              className="h-8 w-full justify-start text-xs font-normal"
+              className="h-8 w-full justify-start text-xs font-normal text-muted-foreground hover:text-foreground"
             >
               <LogOut className="mr-2 h-3.5 w-3.5" />
               Sign out

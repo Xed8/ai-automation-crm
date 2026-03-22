@@ -4,24 +4,22 @@ import {
   AlertCircle,
   ArrowRight,
   CheckCircle2,
-  Circle,
   Clock,
   FileInput,
   FlaskConical,
   KanbanSquare,
   Settings2,
-  Sparkles,
   UsersRound,
+  Zap,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { createPrivilegedServerClient } from '@/lib/supabase/privileged'
 import { requireWorkspaceScope } from '@/lib/workspace-context'
 import { createTestLead } from '@/app/actions/crm'
+import { OnboardingChecklist } from '@/components/shared/onboarding-checklist'
 
 type PriorityCard = {
   tone: 'warning' | 'success'
-  eyebrow: string
   title: string
   body: string
   href: string
@@ -34,20 +32,23 @@ export default async function WorkspaceIndexPage({
   params: Promise<{ workspace_slug: string }>;
 }) {
   const { workspace_slug } = await params
-  const { workspace } = await requireWorkspaceScope(workspace_slug)
+  const { workspace, user } = await requireWorkspaceScope(workspace_slug)
   const supabase = await createPrivilegedServerClient()
 
-  const todayISO = new Date().toISOString().slice(0, 10) // YYYY-MM-DD
+  const todayISO = new Date().toISOString().slice(0, 10)
 
   const [
     { count: leadCount },
     { count: boardCount },
     { count: formCount },
+    { count: automationCount },
     { data: dueTasks },
+    { data: memberRow },
   ] = await Promise.all([
     supabase.from('leads').select('*', { count: 'exact', head: true }).eq('workspace_id', workspace.id),
     supabase.from('boards').select('*', { count: 'exact', head: true }).eq('workspace_id', workspace.id),
     supabase.from('lead_forms').select('*', { count: 'exact', head: true }).eq('workspace_id', workspace.id),
+    supabase.from('automation_rules').select('*', { count: 'exact', head: true }).eq('workspace_id', workspace.id),
     supabase
       .from('tasks')
       .select('id, title, due_date, leads(firm_name)')
@@ -56,16 +57,23 @@ export default async function WorkspaceIndexPage({
       .lte('due_date', todayISO)
       .order('due_date', { ascending: true })
       .limit(5),
+    supabase
+      .from('workspace_members')
+      .select('onboarding_dismissed, onboarding_completed_steps')
+      .eq('workspace_id', workspace.id)
+      .eq('user_id', user.id)
+      .single(),
   ])
 
-  const setupComplete = Number((boardCount ?? 0) > 0) + Number((formCount ?? 0) > 0) + Number((leadCount ?? 0) > 0)
+  const onboardingDismissed = memberRow?.onboarding_dismissed ?? false
+  const onboardingCompletedSteps: string[] = memberRow?.onboarding_completed_steps ?? []
+  const showOnboarding = !onboardingDismissed
 
   let priority: PriorityCard
 
   if ((boardCount ?? 0) === 0) {
     priority = {
       tone: 'warning',
-      eyebrow: 'Important',
       title: 'Create your first pipeline',
       body: 'Set up a board before your team starts moving leads.',
       href: `/w/${workspace_slug}/boards`,
@@ -74,8 +82,7 @@ export default async function WorkspaceIndexPage({
   } else if ((formCount ?? 0) === 0) {
     priority = {
       tone: 'warning',
-      eyebrow: 'Important',
-      title: 'Add a form',
+      title: 'Add a lead intake form',
       body: 'Give this workspace a place for new leads to enter.',
       href: `/w/${workspace_slug}/forms`,
       cta: 'Open forms',
@@ -83,177 +90,135 @@ export default async function WorkspaceIndexPage({
   } else if ((leadCount ?? 0) === 0) {
     priority = {
       tone: 'warning',
-      eyebrow: 'Almost there',
       title: 'Send a test lead',
-      body: 'Your setup is ready. Create a test lead with one click to confirm the full pipeline works.',
+      body: 'Your setup is ready. Create a test lead to confirm the full pipeline works.',
       href: `/w/${workspace_slug}/leads`,
       cta: 'Open leads',
     }
   } else {
     priority = {
       tone: 'success',
-      eyebrow: 'Ready',
       title: 'Workspace is live',
-      body: 'Boards, forms, and leads are all active.',
+      body: 'Boards, forms, and leads are all active. Your pipeline is running.',
       href: `/w/${workspace_slug}/leads`,
-      cta: 'Go to leads',
+      cta: 'View leads',
     }
   }
 
-  const metrics = [
+  const stats = [
     {
       label: 'Leads',
       value: leadCount ?? 0,
       icon: UsersRound,
       href: `/w/${workspace_slug}/leads`,
+      color: 'text-blue-500',
+      bg: 'bg-blue-500/10',
     },
     {
       label: 'Pipelines',
       value: boardCount ?? 0,
       icon: KanbanSquare,
       href: `/w/${workspace_slug}/boards`,
+      color: 'text-violet-500',
+      bg: 'bg-violet-500/10',
     },
     {
       label: 'Forms',
       value: formCount ?? 0,
       icon: FileInput,
       href: `/w/${workspace_slug}/forms`,
+      color: 'text-emerald-500',
+      bg: 'bg-emerald-500/10',
+    },
+    {
+      label: 'Automations',
+      value: automationCount ?? 0,
+      icon: Zap,
+      href: `/w/${workspace_slug}/automations`,
+      color: 'text-amber-500',
+      bg: 'bg-amber-500/10',
     },
   ]
 
-  const shortcuts = [
-    {
-      title: 'Leads',
-      body: 'Review new and active records.',
-      href: `/w/${workspace_slug}/leads`,
-      icon: UsersRound,
-    },
-    {
-      title: 'Boards',
-      body: 'Edit your pipeline structure.',
-      href: `/w/${workspace_slug}/boards`,
-      icon: KanbanSquare,
-    },
-    {
-      title: 'Forms',
-      body: 'Manage intake and routing.',
-      href: `/w/${workspace_slug}/forms`,
-      icon: FileInput,
-    },
-    {
-      title: 'Settings',
-      body: 'Usage, plan, and integrations.',
-      href: `/w/${workspace_slug}/settings`,
-      icon: Settings2,
-    },
+  const navLinks = [
+    { label: 'Leads', href: `/w/${workspace_slug}/leads`, icon: UsersRound },
+    { label: 'Boards', href: `/w/${workspace_slug}/boards`, icon: KanbanSquare },
+    { label: 'Forms', href: `/w/${workspace_slug}/forms`, icon: FileInput },
+    { label: 'Automations', href: `/w/${workspace_slug}/automations`, icon: Zap },
+    { label: 'Settings', href: `/w/${workspace_slug}/settings`, icon: Settings2 },
   ]
-
-  const statusToneClasses =
-    priority.tone === 'warning'
-      ? 'border-amber-500/30 bg-amber-500/10'
-      : 'border-emerald-500/30 bg-emerald-500/10'
-
-  const statusIcon =
-    priority.tone === 'warning' ? (
-      <AlertCircle className="h-5 w-5 text-amber-500" />
-    ) : (
-      <CheckCircle2 className="h-5 w-5 text-emerald-500" />
-    )
 
   return (
-    <div className="space-y-5">
-      <section className="grid gap-4 2xl:grid-cols-[minmax(0,1fr)_360px]">
-        <Card className="surface-panel hero-grid relative overflow-hidden">
-          <div className="absolute inset-y-0 right-0 hidden w-1/2 bg-gradient-to-l from-primary/10 to-transparent xl:block" />
-          <CardContent className="relative p-6 sm:p-7">
-            <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
-              <div className="space-y-3">
-                <span className="eyebrow w-fit">
-                  <Sparkles className="h-3.5 w-3.5" />
-                  Dashboard
-                </span>
-                <div className="space-y-2">
-                  <h2 className="max-w-3xl text-3xl font-semibold sm:text-4xl">{workspace.name}</h2>
-                  <p className="text-sm text-muted-foreground sm:text-base">
-                    Start with the highlighted task, then use the shortcuts below.
-                  </p>
-                </div>
+    <div className="space-y-6">
+
+      {/* Page header */}
+      <div className="flex flex-col gap-1">
+        <h1 className="text-2xl font-semibold tracking-tight">{workspace.name}</h1>
+        <p className="text-sm text-muted-foreground">Overview · {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}</p>
+      </div>
+
+      {/* Stat bar */}
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        {stats.map((s) => {
+          const Icon = s.icon
+          return (
+            <Link
+              key={s.label}
+              href={s.href}
+              className="group flex items-center gap-3 rounded-xl border border-border bg-card px-4 py-3.5 transition-all hover:border-primary/20 hover:shadow-soft"
+            >
+              <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${s.bg}`}>
+                <Icon className={`h-4 w-4 ${s.color}`} />
               </div>
+              <div>
+                <div className="text-2xl font-semibold tabular-nums leading-none">{s.value}</div>
+                <div className="mt-0.5 text-xs text-muted-foreground">{s.label}</div>
+              </div>
+            </Link>
+          )
+        })}
+      </div>
 
-              {setupComplete === 3 ? (
-                <div className="rounded-[1.35rem] border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm min-w-[200px]">
-                  <div className="flex items-center gap-2">
-                    <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0" />
-                    <span className="font-semibold text-emerald-700 dark:text-emerald-300">You're all set up!</span>
-                  </div>
-                  <p className="mt-1.5 text-xs text-emerald-700/80 dark:text-emerald-300/80">
-                    Pipeline, form, and first lead — done.
-                  </p>
-                  <Link
-                    href={`/w/${workspace_slug}/team`}
-                    className="mt-2.5 flex items-center gap-1.5 text-xs font-medium text-emerald-700 dark:text-emerald-300 underline underline-offset-2 hover:opacity-80"
-                  >
-                    Invite a teammate
-                    <ArrowRight className="h-3 w-3" />
-                  </Link>
+      {/* Onboarding */}
+      {showOnboarding && (
+        <OnboardingChecklist
+          workspaceSlug={workspace_slug}
+          completedSteps={onboardingCompletedSteps}
+          hasBoard={(boardCount ?? 0) > 0}
+          hasLead={(leadCount ?? 0) > 0}
+          hasForm={(formCount ?? 0) > 0}
+          hasAutomation={(automationCount ?? 0) > 0}
+        />
+      )}
+
+      {/* Main two-column area */}
+      <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_280px]">
+
+        {/* Left — priority + due tasks */}
+        <div className="space-y-5">
+
+          {/* Priority action */}
+          <div className={[
+            'rounded-xl border p-5',
+            priority.tone === 'warning'
+              ? 'border-amber-500/25 bg-amber-500/5'
+              : 'border-emerald-500/25 bg-emerald-500/5',
+          ].join(' ')}>
+            <div className="flex items-start justify-between gap-4">
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  {priority.tone === 'warning'
+                    ? <AlertCircle className="h-4 w-4 text-amber-500" />
+                    : <CheckCircle2 className="h-4 w-4 text-emerald-500" />}
+                  <span className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                    {priority.tone === 'warning' ? 'Action needed' : 'All good'}
+                  </span>
                 </div>
-              ) : (
-                <div className="rounded-[1.35rem] border border-border/70 bg-background/65 px-4 py-3 text-sm min-w-[200px]">
-                  <div className="text-xs uppercase tracking-[0.24em] text-muted-foreground">Setup checklist</div>
-                  <div className="mt-2 space-y-1.5">
-                    {[
-                      { label: 'Create a pipeline', done: (boardCount ?? 0) > 0, href: `/w/${workspace_slug}/boards` },
-                      { label: 'Add an intake form', done: (formCount ?? 0) > 0, href: `/w/${workspace_slug}/forms` },
-                      { label: 'Receive first lead', done: (leadCount ?? 0) > 0, href: `/w/${workspace_slug}/leads` },
-                    ].map((step) => (
-                      <Link key={step.label} href={step.href} className="flex items-center gap-2 text-xs hover:opacity-80">
-                        {step.done
-                          ? <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-emerald-500" />
-                          : <Circle className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />}
-                        <span className={step.done ? 'text-muted-foreground line-through' : 'font-medium'}>
-                          {step.label}
-                        </span>
-                      </Link>
-                    ))}
-                  </div>
-                </div>
-              )}
+                <h2 className="text-lg font-semibold">{priority.title}</h2>
+                <p className="text-sm text-muted-foreground">{priority.body}</p>
+              </div>
             </div>
-
-            <div className="mt-6 grid gap-3 md:grid-cols-3">
-              {metrics.map((metric) => {
-                const Icon = metric.icon
-
-                return (
-                  <Link
-                    key={metric.label}
-                    href={metric.href}
-                    className="rounded-[1.5rem] border border-border/70 bg-background/60 px-4 py-4 transition hover:border-primary/30 hover:bg-background/75"
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs uppercase tracking-[0.24em] text-muted-foreground">{metric.label}</span>
-                      <Icon className="h-4 w-4 text-primary" />
-                    </div>
-                    <div className="mt-3 text-3xl font-semibold">{metric.value}</div>
-                  </Link>
-                )
-              })}
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className={`surface-card ${statusToneClasses}`}>
-          <CardHeader>
-            <div className="flex items-center gap-2">
-              {statusIcon}
-              <span className="eyebrow w-fit">{priority.eyebrow}</span>
-            </div>
-            <CardTitle className="text-2xl">{priority.title}</CardTitle>
-            <CardDescription className="text-base text-foreground/80">{priority.body}</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="flex flex-col gap-2">
-              {/* One-click test lead when boards exist but no leads yet */}
+            <div className="mt-4 flex flex-wrap gap-2">
               {(boardCount ?? 0) > 0 && (leadCount ?? 0) === 0 && (
                 <form action={async () => {
                   'use server'
@@ -263,107 +228,76 @@ export default async function WorkspaceIndexPage({
                   }
                   redirect(`/w/${workspace_slug}/leads/${result.leadId}`)
                 }}>
-                  <Button type="submit" className="w-full justify-between">
-                    <span className="flex items-center gap-2">
-                      <FlaskConical className="h-4 w-4" />
-                      Create test lead
-                    </span>
-                    <ArrowRight className="h-4 w-4" />
+                  <Button type="submit" size="sm" className="gap-2">
+                    <FlaskConical className="h-3.5 w-3.5" />
+                    Create test lead
                   </Button>
                 </form>
               )}
-              <Button asChild variant={(boardCount ?? 0) > 0 && (leadCount ?? 0) === 0 ? 'outline' : 'default'} className="w-full justify-between">
+              <Button asChild size="sm" variant={priority.tone === 'success' ? 'default' : 'outline'} className="gap-2">
                 <Link href={priority.href}>
                   {priority.cta}
-                  <ArrowRight className="h-4 w-4" />
+                  <ArrowRight className="h-3.5 w-3.5" />
                 </Link>
               </Button>
             </div>
-          </CardContent>
-        </Card>
-      </section>
-
-      {/* Tasks due today */}
-      {dueTasks && dueTasks.length > 0 && (
-        <section className="space-y-3">
-          <div className="flex items-center gap-2">
-            <Clock className="h-4 w-4 text-amber-500" />
-            <h3 className="text-sm font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-              Due today · {dueTasks.length} task{dueTasks.length === 1 ? '' : 's'}
-            </h3>
           </div>
-          <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
-            {dueTasks.map((task) => {
-              const leadName = (task.leads as { firm_name?: string } | null)?.firm_name
-              const isOverdue = task.due_date && task.due_date < todayISO
-              return (
-                <div
-                  key={task.id}
-                  className={[
-                    'flex items-start gap-3 rounded-lg border px-4 py-3 text-sm',
-                    isOverdue
-                      ? 'border-destructive/30 bg-destructive/5'
-                      : 'border-amber-500/30 bg-amber-500/5',
-                  ].join(' ')}
-                >
-                  <Clock className={`mt-0.5 h-3.5 w-3.5 shrink-0 ${isOverdue ? 'text-destructive' : 'text-amber-500'}`} />
-                  <div className="min-w-0">
-                    <p className="font-medium leading-snug">{task.title}</p>
-                    {leadName && (
-                      <p className="mt-0.5 text-xs text-muted-foreground truncate">{leadName}</p>
-                    )}
-                    {isOverdue && (
-                      <p className="mt-0.5 text-xs text-destructive font-medium">Overdue</p>
-                    )}
-                  </div>
+
+          {/* Due tasks */}
+          {dueTasks && dueTasks.length > 0 && (
+            <div className="rounded-xl border border-border bg-card">
+              <div className="flex items-center justify-between border-b border-border px-4 py-3">
+                <div className="flex items-center gap-2">
+                  <Clock className="h-3.5 w-3.5 text-amber-500" />
+                  <span className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                    Due today · {dueTasks.length}
+                  </span>
                 </div>
-              )
-            })}
-          </div>
-          <div className="text-right">
-            <Button asChild variant="ghost" size="sm" className="h-7 text-xs text-muted-foreground">
-              <Link href={`/w/${workspace_slug}/leads`}>View all leads →</Link>
-            </Button>
-          </div>
-        </section>
-      )}
-
-      <section className="space-y-4">
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <h3 className="text-2xl font-semibold sm:text-3xl">Quick access</h3>
-            <p className="text-sm text-muted-foreground">Jump straight to the part of the CRM you need.</p>
-          </div>
+                <Button asChild variant="ghost" size="sm" className="h-6 text-xs text-muted-foreground">
+                  <Link href={`/w/${workspace_slug}/leads`}>View all</Link>
+                </Button>
+              </div>
+              <div className="divide-y divide-border">
+                {dueTasks.map((task) => {
+                  const leadName = (task.leads as { firm_name?: string } | null)?.firm_name
+                  const isOverdue = task.due_date && task.due_date < todayISO
+                  return (
+                    <div key={task.id} className="flex items-start gap-3 px-4 py-3">
+                      <div className={`mt-0.5 h-1.5 w-1.5 shrink-0 rounded-full ${isOverdue ? 'bg-destructive' : 'bg-amber-500'}`} />
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-medium leading-snug truncate">{task.title}</p>
+                        <p className="mt-0.5 text-xs text-muted-foreground truncate">
+                          {leadName ?? '—'}{isOverdue ? ' · Overdue' : ''}
+                        </p>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )}
         </div>
 
-        <div className="grid gap-4 md:grid-cols-2 2xl:grid-cols-4">
-          {shortcuts.map((item) => {
-            const Icon = item.icon
-
+        {/* Right — quick nav */}
+        <div className="space-y-2">
+          <p className="px-1 text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">Navigate</p>
+          {navLinks.map((link) => {
+            const Icon = link.icon
             return (
-              <Card key={item.title} className="surface-card surface-card-hover">
-                <CardHeader className="space-y-4">
-                  <div className="flex h-11 w-11 items-center justify-center rounded-[1.1rem] bg-primary/10 text-primary">
-                    <Icon className="h-5 w-5" />
-                  </div>
-                  <div className="space-y-2">
-                    <CardTitle className="text-2xl">{item.title}</CardTitle>
-                    <CardDescription>{item.body}</CardDescription>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <Button asChild className="w-full justify-between">
-                    <Link href={item.href}>
-                      Open
-                      <ArrowRight className="h-4 w-4" />
-                    </Link>
-                  </Button>
-                </CardContent>
-              </Card>
+              <Link
+                key={link.label}
+                href={link.href}
+                className="flex items-center gap-3 rounded-lg border border-border bg-card px-3.5 py-3 text-sm font-medium transition-all hover:border-primary/20 hover:bg-muted/50 hover:text-foreground"
+              >
+                <Icon className="h-4 w-4 shrink-0 text-muted-foreground" />
+                {link.label}
+                <ArrowRight className="ml-auto h-3.5 w-3.5 text-muted-foreground/40" />
+              </Link>
             )
           })}
         </div>
-      </section>
+
+      </div>
     </div>
   )
 }

@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { Check, Loader2, Pencil, Plus, Trash2, X } from 'lucide-react'
 import { updateLeadStage, createLead, renameStage, deleteStage } from '@/app/actions/crm'
+import { LeadStatusBadge } from '@/components/leads/lead-status-badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -96,7 +97,7 @@ export function KanbanBoard({ stages, leads, workspaceSlug, boardId }: KanbanBoa
       draggingLeadId.current = null
       draggingFromStageId.current = null
 
-      if (!leadId || fromStageId === targetStageId) return
+      if (!leadId || fromStageId === targetStageId || isPending) return
 
       setPendingLeadId(leadId)
       startTransition(async () => {
@@ -108,7 +109,7 @@ export function KanbanBoard({ stages, leads, workspaceSlug, boardId }: KanbanBoa
         setPendingLeadId(null)
       })
     },
-    [workspaceSlug, boardId, moveLeadOptimistic]
+    [workspaceSlug, boardId, moveLeadOptimistic, isPending]
   )
 
   const handleDragEnd = useCallback(() => {
@@ -297,12 +298,13 @@ export function KanbanBoard({ stages, leads, workspaceSlug, boardId }: KanbanBoa
                 return (
                   <div
                     key={lead.id}
-                    draggable
-                    onDragStart={() => handleDragStart(lead.id, stage.id)}
+                    draggable={!isPending}
+                    onDragStart={() => !isPending && handleDragStart(lead.id, stage.id)}
                     onDragEnd={handleDragEnd}
                     className={[
                       'rounded-lg transition-opacity',
                       isMoving ? 'opacity-50' : 'opacity-100',
+                      isPending && !isMoving ? 'cursor-not-allowed' : '',
                     ].join(' ')}
                   >
                     <Link href={`/w/${workspaceSlug}/leads/${lead.id}`}>
@@ -317,7 +319,7 @@ export function KanbanBoard({ stages, leads, workspaceSlug, boardId }: KanbanBoa
                             {lead.contact_name || 'No contact listed'}
                           </div>
                           <div className="flex items-center justify-between text-xs text-muted-foreground">
-                            <span>Status: {lead.status}</span>
+                            <LeadStatusBadge status={lead.status ?? 'active'} />
                             <span className="font-semibold text-primary">
                               {lead.value ? `$${lead.value.toLocaleString()}` : 'No value'}
                             </span>

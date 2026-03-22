@@ -1,9 +1,9 @@
 import Link from "next/link"
 import { signup } from "@/app/actions/auth"
-import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
+import { AuthSubmitButton } from '@/components/shared/auth-submit-button'
 
 export default async function RegisterPage({
   searchParams,
@@ -59,9 +59,7 @@ export default async function RegisterPage({
           </div>
         </CardContent>
         <CardFooter className="flex-col items-stretch gap-4">
-          <Button type="submit" className="w-full">
-            Create account
-          </Button>
+          <AuthSubmitButton label="Create account" loadingText="Creating account…" />
           <div className="text-center text-sm text-muted-foreground">
             Already have an account?{" "}
             <Link href="/login" className="font-semibold text-primary underline-offset-4 hover:underline">

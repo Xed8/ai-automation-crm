@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { createPrivilegedServerClient } from '@/lib/supabase/privileged'
 import { requireWorkspaceScope } from '@/lib/workspace-context'
+import { AUTOMATION_TEMPLATES } from '@/lib/automations/templates'
 
 export async function createAutomationRule(workspaceSlug: string, formData: FormData) {
   const { workspace } = await requireWorkspaceScope(workspaceSlug)
@@ -73,6 +74,56 @@ export async function toggleAutomationRule(workspaceSlug: string, ruleId: string
     .eq('workspace_id', workspace.id)
 
   if (error) return { error: 'Failed to update rule.' }
+
+  revalidatePath(`/w/${workspaceSlug}/automations`)
+  return { success: true }
+}
+
+export async function importAutomationTemplate(
+  workspaceSlug: string,
+  templateId: string,
+  boardId: string,
+  triggerStageId?: string,
+  actionStageId?: string,
+  assigneeId?: string,
+) {
+  const { workspace } = await requireWorkspaceScope(workspaceSlug)
+  const supabase = await createPrivilegedServerClient()
+
+  const template = AUTOMATION_TEMPLATES.find((t) => t.id === templateId)
+  if (!template) return { error: 'Template not found.' }
+
+  const triggerConfig: Record<string, string> = { ...template.trigger_config }
+  if (template.needs_trigger_stage) {
+    if (!triggerStageId) return { error: 'Please select a trigger stage.' }
+    triggerConfig.target_stage_id = triggerStageId
+  }
+
+  const actionConfig: Record<string, string> = { ...template.action_config }
+  if (template.needs_action_stage) {
+    if (!actionStageId) return { error: 'Please select a target stage.' }
+    actionConfig.to_stage_id = actionStageId
+  }
+  if (template.needs_assignee) {
+    if (!assigneeId) return { error: 'Please select a team member.' }
+    actionConfig.assignee_id = assigneeId
+  }
+
+  const { error } = await supabase.from('automation_rules').insert({
+    workspace_id: workspace.id,
+    board_id: boardId,
+    name: template.name,
+    trigger_type: template.trigger_type,
+    trigger_config: triggerConfig,
+    action_type: template.action_type,
+    action_config: actionConfig,
+    is_active: true,
+  })
+
+  if (error) {
+    console.error('Failed to import template:', error)
+    return { error: 'Failed to create rule from template.' }
+  }
 
   revalidatePath(`/w/${workspaceSlug}/automations`)
   return { success: true }

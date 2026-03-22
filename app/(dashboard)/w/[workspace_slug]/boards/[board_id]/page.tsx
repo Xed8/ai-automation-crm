@@ -1,15 +1,11 @@
 import Link from 'next/link'
-import { redirect } from 'next/navigation'
-import { Plus } from 'lucide-react'
-import { createStage } from '@/app/actions/crm'
 import { createPrivilegedServerClient } from '@/lib/supabase/privileged'
 import { requireWorkspaceScope } from '@/lib/workspace-context'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { KanbanBoard } from '@/components/leads/kanban-board'
 import { DeleteBoardButton } from '@/components/leads/delete-board-button'
+import { AddStageForm } from '@/components/leads/add-stage-form'
 
 
 export default async function BoardPipelinePage({
@@ -109,32 +105,7 @@ export default async function BoardPipelinePage({
           <CardTitle>Add stage</CardTitle>
         </CardHeader>
         <CardContent>
-          <form
-            className="grid gap-4 xl:grid-cols-[1fr_auto]"
-            action={async (formData) => {
-              'use server'
-
-              const result = await createStage(workspace_slug, board_id, formData)
-
-              if (result?.error) {
-                redirect(`/w/${workspace_slug}/boards/${board_id}?status=error&message=${encodeURIComponent(result.error)}`)
-              }
-
-              redirect(`/w/${workspace_slug}/boards/${board_id}?status=success&message=${encodeURIComponent('Stage created. You can now build an intake form.')}`)
-            }}
-          >
-            <div className="space-y-2">
-              <Label htmlFor="name">Stage name</Label>
-              <Input id="name" name="name" placeholder="New inquiry" required />
-            </div>
-
-            <div className="flex items-end">
-              <Button type="submit" className="w-full justify-between xl:w-auto">
-                Add stage
-                <Plus className="h-4 w-4" />
-              </Button>
-            </div>
-          </form>
+          <AddStageForm workspaceSlug={workspace_slug} boardId={board_id} />
         </CardContent>
       </Card>
 

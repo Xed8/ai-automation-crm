@@ -1,16 +1,12 @@
-import { redirect } from 'next/navigation'
 import { createPrivilegedServerClient } from '@/lib/supabase/privileged'
 import { requireWorkspaceScope } from '@/lib/workspace-context'
-import { createNote, changeLeadStage, updateLead, archiveLead } from '@/app/actions/crm'
+import { fetchActivityPage } from '@/app/actions/crm'
 import { cn } from '@/lib/utils'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
-import { Textarea } from '@/components/ui/textarea'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { AIActions } from '@/components/leads/ai-actions'
 import { TaskList } from '@/components/leads/task-list'
+import { ActivityLog } from '@/components/leads/activity-log'
+import { LeadHeader, EditLeadForm, MoveStageForm, AddNoteForm } from '@/components/leads/lead-detail-forms'
 
 export default async function LeadDetailPage({
   params,
@@ -48,22 +44,21 @@ export default async function LeadDetailPage({
 
   const { data: tasks } = await supabase
     .from('tasks')
-    .select('*')
+    .select('*, assignee:profiles!tasks_assigned_to_fkey(id, full_name, avatar_url)')
     .eq('lead_id', lead.id)
     .eq('workspace_id', workspace.id)
     .order('created_at', { ascending: true })
 
-  const { data: activities } = await supabase
-    .from('activity_logs')
-    .select('*, user:profiles(full_name)')
-    .eq('lead_id', lead.id)
+  const { data: members } = await supabase
+    .from('workspace_members')
+    .select('user_id, profiles(id, full_name, avatar_url)')
     .eq('workspace_id', workspace.id)
-    .order('created_at', { ascending: false })
+
+  const { items: activities, nextCursor: activityCursor } = await fetchActivityPage(workspace_slug, lead_id, null)
 
   const boardName = (lead.boards?.name as string) || 'Unassigned'
   const stageName = (lead.stages?.name as string) || 'No stage'
   const assignedTo = (lead.assigned_to as { full_name?: string } | null)?.full_name || 'Unassigned'
-  const isArchived = lead.status === 'archived'
 
   return (
     <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
@@ -71,24 +66,12 @@ export default async function LeadDetailPage({
       {/* Left column */}
       <div className="space-y-6">
         <section className="surface-panel px-5 py-5">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="flex flex-wrap items-center gap-3">
-              <h1 className="text-2xl font-semibold">{lead.firm_name}</h1>
-              <Badge variant={lead.status === 'active' ? 'default' : 'secondary'}>{lead.status}</Badge>
-            </div>
-            {/* Archive / restore button */}
-            <form action={async () => {
-              'use server'
-              const result = await archiveLead(workspace_slug, lead_id)
-              if (result?.error) {
-                redirect(`/w/${workspace_slug}/leads/${lead_id}?error=${encodeURIComponent(result.error)}`)
-              }
-            }}>
-              <Button type="submit" variant="outline" size="sm" className="text-muted-foreground">
-                {isArchived ? 'Restore lead' : 'Archive lead'}
-              </Button>
-            </form>
-          </div>
+          <LeadHeader
+            workspaceSlug={workspace_slug}
+            lead={lead}
+            boardName={boardName}
+            stageName={stageName}
+          />
           <p className="mt-1.5 text-sm text-muted-foreground">{boardName} / {stageName}</p>
           <div className="mt-4 grid gap-3 sm:grid-cols-3">
             <div className="surface-card px-4 py-3">
@@ -114,40 +97,7 @@ export default async function LeadDetailPage({
             <CardTitle className="text-xs font-semibold uppercase tracking-[0.15em] text-muted-foreground">Edit lead</CardTitle>
           </CardHeader>
           <CardContent>
-            <form
-              action={async (formData) => {
-                'use server'
-                const result = await updateLead(workspace_slug, lead_id, formData)
-                if (result?.error) {
-                  redirect(`/w/${workspace_slug}/leads/${lead_id}?error=${encodeURIComponent(result.error)}`)
-                }
-              }}
-              className="grid gap-3 sm:grid-cols-2"
-            >
-              <div className="space-y-1.5">
-                <Label htmlFor="firm_name" className="text-xs">Firm name *</Label>
-                <Input id="firm_name" name="firm_name" defaultValue={lead.firm_name} required className="h-8 text-sm" />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="contact_name" className="text-xs">Contact name</Label>
-                <Input id="contact_name" name="contact_name" defaultValue={lead.contact_name ?? ''} className="h-8 text-sm" />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="email" className="text-xs">Email</Label>
-                <Input id="email" name="email" type="email" defaultValue={lead.email ?? ''} className="h-8 text-sm" />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="phone" className="text-xs">Phone</Label>
-                <Input id="phone" name="phone" defaultValue={lead.phone ?? ''} className="h-8 text-sm" />
-              </div>
-              <div className="space-y-1.5 sm:col-span-2">
-                <Label htmlFor="value" className="text-xs">Deal value ($)</Label>
-                <Input id="value" name="value" type="number" min="0" step="0.01" defaultValue={lead.value ?? ''} className="h-8 text-sm" />
-              </div>
-              <div className="sm:col-span-2">
-                <Button type="submit" size="sm" className="w-full sm:w-auto">Save changes</Button>
-              </div>
-            </form>
+            <EditLeadForm workspaceSlug={workspace_slug} lead={lead} />
           </CardContent>
         </Card>
 
@@ -177,24 +127,12 @@ export default async function LeadDetailPage({
           </Card>
         </div>
 
-        <div>
-          <h2 className="mb-3 text-xs font-semibold uppercase tracking-[0.15em] text-muted-foreground">Activity</h2>
-          <div className="space-y-2">
-            {activities?.length === 0 && <p className="text-sm text-muted-foreground">No activity yet.</p>}
-            {activities?.map((activity) => (
-              <div key={activity.id} className="flex gap-3 rounded-lg border border-border bg-card px-4 py-3">
-                <div className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-primary/50" />
-                <div>
-                  <div className="text-sm">
-                    <span className="font-medium">{activity.user?.full_name || 'System'}</span>{' '}
-                    <span className="text-muted-foreground">{activity.action_type.replace(/_/g, ' ')}</span>
-                  </div>
-                  <div className="mt-0.5 text-xs text-muted-foreground">{new Date(activity.created_at).toLocaleString()}</div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
+        <ActivityLog
+          workspaceSlug={workspace_slug}
+          leadId={lead_id}
+          initialItems={activities}
+          initialCursor={activityCursor}
+        />
       </div>
 
       {/* Right column */}
@@ -206,27 +144,12 @@ export default async function LeadDetailPage({
             <CardTitle className="text-xs font-semibold uppercase tracking-[0.15em] text-muted-foreground">Move stage</CardTitle>
           </CardHeader>
           <CardContent>
-            <form
-              action={async (formData) => {
-                'use server'
-                const result = await changeLeadStage(workspace_slug, lead_id, formData)
-                if (result?.error) {
-                  redirect(`/w/${workspace_slug}/leads/${lead_id}?error=${encodeURIComponent(result.error)}`)
-                }
-              }}
-              className="flex gap-2"
-            >
-              <select
-                name="stage_id"
-                defaultValue={lead.stage_id ?? ''}
-                className="h-9 flex-1 rounded-md border border-input bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-              >
-                {boardStages?.map((s) => (
-                  <option key={s.id} value={s.id}>{s.name}</option>
-                ))}
-              </select>
-              <Button type="submit" size="sm" className="h-9">Move</Button>
-            </form>
+            <MoveStageForm
+              workspaceSlug={workspace_slug}
+              leadId={lead_id}
+              currentStageId={lead.stage_id}
+              stages={boardStages ?? []}
+            />
           </CardContent>
         </Card>
 
@@ -243,28 +166,22 @@ export default async function LeadDetailPage({
         {/* Tasks */}
         <div>
           <h3 className="mb-2 text-xs font-semibold uppercase tracking-[0.15em] text-muted-foreground">Tasks</h3>
-          <TaskList tasks={tasks ?? []} workspaceSlug={workspace_slug} leadId={lead_id} />
+          <TaskList
+            tasks={tasks ?? []}
+            workspaceSlug={workspace_slug}
+            leadId={lead_id}
+            members={(members ?? []).flatMap(m => {
+              const p = m.profiles as unknown as { id: string; full_name: string | null; avatar_url: string | null } | null
+              return p ? [p] : []
+            })}
+          />
         </div>
 
         {/* Notes */}
         <div>
           <h3 className="mb-2 text-xs font-semibold uppercase tracking-[0.15em] text-muted-foreground">Notes</h3>
           <div className="space-y-2">
-            <form
-              className="space-y-2"
-              action={async (formData) => {
-                'use server'
-                const content = (formData.get('content') as string | null)?.trim() ?? ''
-                if (!content) return
-                const result = await createNote(workspace_slug, lead_id, formData)
-                if (result?.error) {
-                  redirect(`/w/${workspace_slug}/leads/${lead_id}?error=${encodeURIComponent(result.error)}`)
-                }
-              }}
-            >
-              <Textarea name="content" placeholder="Write a note…" rows={3} required className="resize-none text-sm" />
-              <Button type="submit" size="sm" className="w-full">Add note</Button>
-            </form>
+            <AddNoteForm workspaceSlug={workspace_slug} leadId={lead_id} />
             {notes?.length === 0 && <p className="text-xs text-muted-foreground">No notes yet.</p>}
             {notes?.map((note) => (
               <div key={note.id} className="rounded-lg border border-border bg-card px-3 py-2.5">

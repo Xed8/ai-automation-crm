@@ -1,13 +1,10 @@
-import { redirect } from 'next/navigation'
 import { Users } from 'lucide-react'
 import { createPrivilegedServerClient } from '@/lib/supabase/privileged'
 import { requireWorkspaceScope } from '@/lib/workspace-context'
-import { inviteTeamMember, removeTeamMember } from '@/app/actions/team'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
+import { TeamInviteForm } from '@/components/team/team-invite-form'
+import { RemoveMemberButton } from '@/components/team/remove-member-button'
 
 const ROLE_COLORS: Record<string, string> = {
   owner: 'bg-primary/10 text-primary border-primary/20',
@@ -80,42 +77,7 @@ export default async function TeamPage({
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <form
-              className="grid gap-4 sm:grid-cols-[1fr_auto_auto]"
-              action={async (formData) => {
-                'use server'
-                const result = await inviteTeamMember(workspace_slug, formData)
-                if (result?.error) {
-                  redirect(`/w/${workspace_slug}/team?error=${encodeURIComponent(result.error)}`)
-                }
-              }}
-            >
-              <div className="space-y-1.5">
-                <Label htmlFor="invite-email" className="text-xs">Email address</Label>
-                <Input
-                  id="invite-email"
-                  name="email"
-                  type="email"
-                  placeholder="colleague@agency.com"
-                  required
-                  className="h-9 text-sm"
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label className="text-xs">Role</Label>
-                <select
-                  name="role"
-                  defaultValue="member"
-                  className="h-9 rounded-md border border-input bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-                >
-                  <option value="member">Member</option>
-                  <option value="admin">Admin</option>
-                </select>
-              </div>
-              <div className="flex items-end">
-                <Button type="submit" size="sm" className="h-9 w-full">Send invite</Button>
-              </div>
-            </form>
+            <TeamInviteForm workspaceSlug={workspace_slug} />
           </CardContent>
         </Card>
       )}
@@ -152,24 +114,11 @@ export default async function TeamPage({
                 </div>
 
                 {canManage && !isYou && member.role !== 'owner' && (
-                  <form
-                    action={async () => {
-                      'use server'
-                      const result = await removeTeamMember(workspace_slug, member.user_id)
-                      if (result?.error) {
-                        redirect(`/w/${workspace_slug}/team?error=${encodeURIComponent(result.error)}`)
-                      }
-                    }}
-                  >
-                    <Button
-                      type="submit"
-                      variant="ghost"
-                      size="sm"
-                      className="h-7 text-xs text-muted-foreground hover:text-destructive"
-                    >
-                      Remove
-                    </Button>
-                  </form>
+                  <RemoveMemberButton
+                    workspaceSlug={workspace_slug}
+                    userId={member.user_id}
+                    displayName={profile?.full_name || profile?.email || 'this member'}
+                  />
                 )}
               </div>
             )

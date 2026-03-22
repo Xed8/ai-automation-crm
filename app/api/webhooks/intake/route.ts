@@ -5,6 +5,8 @@ import { isJsonObject } from '@/lib/json'
 import { parseIngestLeadFromFormResult } from '@/lib/lead-intake'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { evaluateAutomations } from '@/lib/automations/engine'
+import { emitOutboundWebhook } from '@/lib/webhooks/outbound'
+import { tokenRatelimit, ipRatelimit } from '@/lib/ratelimit'
 
 // Webhooks don't have cookies or standard auth, so we just use a generic anon client
 // and let the SECURITY DEFINER RPC handle the secret validation.
@@ -12,6 +14,14 @@ const supabase = createClient<Database>(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 )
+
+function rateLimitedResponse(reset: number) {
+  const retryAfter = Math.ceil((reset - Date.now()) / 1000)
+  return NextResponse.json(
+    { error: 'Too many requests' },
+    { status: 429, headers: { 'Retry-After': String(retryAfter) } }
+  )
+}
 
 export async function POST(req: NextRequest) {
   try {
@@ -21,6 +31,18 @@ export async function POST(req: NextRequest) {
     }
 
     const webhookSecret = authHeader.split(' ')[1]
+
+    // Rate limit by Bearer token (60 req/min)
+    const tokenResult = await tokenRatelimit.limit(webhookSecret)
+    if (!tokenResult.success) return rateLimitedResponse(tokenResult.reset)
+
+    // Rate limit by IP (200 req/min)
+    const ip =
+      req.headers.get('x-forwarded-for')?.split(',')[0].trim() ??
+      req.headers.get('x-real-ip') ??
+      'unknown'
+    const ipResult = await ipRatelimit.limit(ip)
+    if (!ipResult.success) return rateLimitedResponse(ipResult.reset)
     const body = await req.json()
     if (!isJsonObject(body)) {
       return NextResponse.json({ error: 'Invalid payload' }, { status: 400 })
@@ -71,7 +93,16 @@ export async function POST(req: NextRequest) {
         .single()
 
       if (leadRes.data) {
-        await evaluateAutomations(leadRes.data.workspace_id, leadRes.data.board_id, 'form_submitted', leadId)
+        const { workspace_id, board_id } = leadRes.data
+        await evaluateAutomations(workspace_id, board_id, 'form_submitted', leadId)
+        emitOutboundWebhook(workspace_id, 'form.submitted', {
+          lead_id: leadId,
+          board_id,
+          form_id: formId,
+          firm_name: firmName,
+          contact_name: contactName,
+          email,
+        })
       } else if (leadRes.error) {
         console.error('Failed to load lead context for automation evaluation:', leadRes.error)
       }

@@ -4,6 +4,8 @@ import { revalidatePath } from 'next/cache'
 import { createPrivilegedServerClient } from '@/lib/supabase/privileged'
 import { requireWorkspaceScope } from '@/lib/workspace-context'
 import { evaluateAutomations } from '@/lib/automations/engine'
+import { emitOutboundWebhook } from '@/lib/webhooks/outbound'
+import { createNotification } from '@/app/actions/notifications'
 
 const SAMPLE_STAGES = [
   'New Inquiry',
@@ -184,6 +186,17 @@ export async function createLead(workspaceSlug: string, boardId: string, stageId
   // Phase 5: Trigger Automations asynchronously
   evaluateAutomations(workspace.id, boardId, 'lead_created', lead.id)
 
+  // Outbound webhooks
+  emitOutboundWebhook(workspace.id, 'lead.created', {
+    lead_id: lead.id,
+    board_id: boardId,
+    stage_id: stageId,
+    firm_name: lead.firm_name,
+    contact_name: lead.contact_name,
+    email: lead.email,
+    value: lead.value,
+  })
+
   // Phase 8: Increment Usage
   recordUsage(workspace.id, 'leads', 1).catch(console.error)
 
@@ -215,29 +228,54 @@ export async function updateLeadStage(workspaceSlug: string, boardId: string, le
     metadata: { to_stage_id: newStageId }
   })
 
+  emitOutboundWebhook(workspace.id, 'lead.stage_changed', {
+    lead_id: leadId,
+    board_id: boardId,
+    new_stage_id: newStageId,
+  })
+
   revalidatePath(`/w/${workspaceSlug}/boards/${boardId}`)
   return { success: true }
 }
 
 export async function createTask(workspaceSlug: string, leadId: string, formData: FormData) {
-  const { workspace } = await requireWorkspaceScope(workspaceSlug)
+  const { workspace, user } = await requireWorkspaceScope(workspaceSlug)
   const supabase = await createPrivilegedServerClient()
 
   const title = (formData.get('title') as string | null)?.trim() ?? ''
   if (!title) return { error: 'Task title is required.' }
 
   const rawDue = (formData.get('due_date') as string | null)?.trim() || null
+  const assignedTo = (formData.get('assigned_to') as string | null)?.trim() || null
 
-  const { error } = await supabase.from('tasks').insert({
+  const { data: task, error } = await supabase.from('tasks').insert({
     workspace_id: workspace.id,
     lead_id: leadId,
     title,
     due_date: rawDue || null,
-  })
+    assigned_to: assignedTo || null,
+  }).select('id').single()
 
-  if (error) {
+  if (error || !task) {
     console.error('Failed to create task:', error)
     return { error: 'Failed to create task.' }
+  }
+
+  // Notify the assignee (skip if assigning to yourself)
+  if (assignedTo && assignedTo !== user.id) {
+    const { data: lead } = await supabase
+      .from('leads')
+      .select('firm_name')
+      .eq('id', leadId)
+      .single()
+    await createNotification({
+      workspace_id: workspace.id,
+      user_id: assignedTo,
+      type: 'task_assigned',
+      title: 'You were assigned a task',
+      message: `"${title}"${lead?.firm_name ? ` on ${lead.firm_name}` : ''}`,
+      link: `/w/${workspaceSlug}/leads/${leadId}`,
+    })
   }
 
   revalidatePath(`/w/${workspaceSlug}/leads/${leadId}`)
@@ -247,13 +285,6 @@ export async function createTask(workspaceSlug: string, leadId: string, formData
 export async function toggleTask(workspaceSlug: string, taskId: string, completed: boolean) {
   const { workspace } = await requireWorkspaceScope(workspaceSlug)
   const supabase = await createPrivilegedServerClient()
-
-  const { data: task } = await supabase
-    .from('tasks')
-    .select('lead_id')
-    .eq('id', taskId)
-    .eq('workspace_id', workspace.id)
-    .single()
 
   const { error } = await supabase
     .from('tasks')
@@ -266,9 +297,7 @@ export async function toggleTask(workspaceSlug: string, taskId: string, complete
     return { error: 'Failed to update task.' }
   }
 
-  if (task?.lead_id) {
-    revalidatePath(`/w/${workspaceSlug}/leads/${task.lead_id}`)
-  }
+  // No revalidatePath — client uses optimistic updates for instant feedback
   return { success: true }
 }
 
@@ -310,6 +339,12 @@ export async function changeLeadStage(workspaceSlug: string, leadId: string, for
   if (lead.board_id) {
     evaluateAutomations(workspace.id, lead.board_id, 'stage_changed', leadId, { new_stage_id: stageId })
   }
+
+  emitOutboundWebhook(workspace.id, 'lead.stage_changed', {
+    lead_id: leadId,
+    board_id: lead.board_id,
+    new_stage_id: stageId,
+  })
 
   revalidatePath(`/w/${workspaceSlug}/leads/${leadId}`)
   if (lead.board_id) revalidatePath(`/w/${workspaceSlug}/boards/${lead.board_id}`)
@@ -561,4 +596,78 @@ export async function createNote(workspaceSlug: string, leadId: string, formData
 
   revalidatePath(`/w/${workspaceSlug}/leads/${leadId}`)
   return { success: true }
+}
+
+const LEADS_PAGE_SIZE = 50
+const ACTIVITY_PAGE_SIZE = 30
+
+export async function fetchLeadsPage(
+  workspaceSlug: string,
+  opts: { cursor: string | null; q?: string; status?: string }
+) {
+  const { workspace } = await requireWorkspaceScope(workspaceSlug)
+  const supabase = await createPrivilegedServerClient()
+
+  let query = supabase
+    .from('leads')
+    .select('*, boards(name), stages(name)')
+    .eq('workspace_id', workspace.id)
+    .order('created_at', { ascending: false })
+    .limit(LEADS_PAGE_SIZE + 1)
+
+  if (opts.q?.trim()) {
+    const term = opts.q.trim()
+    query = query.or(`firm_name.ilike.%${term}%,contact_name.ilike.%${term}%,email.ilike.%${term}%`)
+  }
+
+  if (opts.status && opts.status !== 'all') {
+    query = query.eq('status', opts.status)
+  } else if (!opts.status) {
+    query = query.eq('status', 'active')
+  }
+
+  if (opts.cursor) {
+    query = query.lt('created_at', opts.cursor)
+  }
+
+  const { data, error } = await query
+
+  if (error) return { items: [], nextCursor: null }
+
+  const hasMore = data.length > LEADS_PAGE_SIZE
+  const items = hasMore ? data.slice(0, LEADS_PAGE_SIZE) : data
+  const nextCursor = hasMore ? items[items.length - 1].created_at : null
+
+  return { items, nextCursor }
+}
+
+export async function fetchActivityPage(
+  workspaceSlug: string,
+  leadId: string,
+  cursor: string | null
+) {
+  const { workspace } = await requireWorkspaceScope(workspaceSlug)
+  const supabase = await createPrivilegedServerClient()
+
+  let query = supabase
+    .from('activity_logs')
+    .select('*, user:profiles(full_name)')
+    .eq('lead_id', leadId)
+    .eq('workspace_id', workspace.id)
+    .order('created_at', { ascending: false })
+    .limit(ACTIVITY_PAGE_SIZE + 1)
+
+  if (cursor) {
+    query = query.lt('created_at', cursor)
+  }
+
+  const { data, error } = await query
+
+  if (error) return { items: [], nextCursor: null }
+
+  const hasMore = data.length > ACTIVITY_PAGE_SIZE
+  const items = hasMore ? data.slice(0, ACTIVITY_PAGE_SIZE) : data
+  const nextCursor = hasMore ? items[items.length - 1].created_at : null
+
+  return { items, nextCursor }
 }

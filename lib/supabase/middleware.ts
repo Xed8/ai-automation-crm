@@ -43,8 +43,8 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(url)
   }
 
-  // Redirect logged-in users away from auth pages
-  if (user && (request.nextUrl.pathname.startsWith('/login') || request.nextUrl.pathname.startsWith('/register'))) {
+  // Redirect logged-in users away from auth pages (but not reset-password — they arrive with a recovery session)
+  if (user && (request.nextUrl.pathname.startsWith('/login') || request.nextUrl.pathname.startsWith('/register')) && !request.nextUrl.pathname.startsWith('/reset-password')) {
     const url = request.nextUrl.clone()
     url.pathname = '/workspaces'
     return NextResponse.redirect(url)

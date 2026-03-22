@@ -1,12 +1,11 @@
-import { redirect } from 'next/navigation'
 import { Zap } from 'lucide-react'
 import { createPrivilegedServerClient } from '@/lib/supabase/privileged'
 import { requireWorkspaceScope } from '@/lib/workspace-context'
-import { toggleAutomationRule, deleteAutomationRule } from '@/app/actions/automations'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { RuleBuilder } from '@/components/automations/rule-builder'
+import { AutomationActions } from '@/components/automations/automation-actions'
+import { TemplateLibrary } from '@/components/automations/template-library'
 
 type Json = Record<string, unknown>
 
@@ -127,6 +126,23 @@ export default async function AutomationsPage({
         </div>
       </section>
 
+      {/* Template library */}
+      <Card className="surface-card">
+        <CardHeader>
+          <CardTitle>Template library</CardTitle>
+          <CardDescription>
+            Start from a pre-built automation — pick one and configure it for your pipeline.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <TemplateLibrary
+            workspaceSlug={workspace_slug}
+            boards={builderBoards}
+            members={builderMembers}
+          />
+        </CardContent>
+      </Card>
+
       {/* Create rule */}
       <Card className="surface-card">
         <CardHeader>
@@ -198,39 +214,12 @@ export default async function AutomationsPage({
                     </div>
                   </div>
 
-                  <div className="flex shrink-0 gap-2">
-                    {/* Toggle active */}
-                    <form
-                      action={async () => {
-                        'use server'
-                        await toggleAutomationRule(workspace_slug, rule.id, !rule.is_active)
-                      }}
-                    >
-                      <Button type="submit" variant="outline" size="sm" className="h-8 text-xs">
-                        {rule.is_active ? 'Pause' : 'Activate'}
-                      </Button>
-                    </form>
-
-                    {/* Delete */}
-                    <form
-                      action={async () => {
-                        'use server'
-                        const result = await deleteAutomationRule(workspace_slug, rule.id)
-                        if (result?.error) {
-                          redirect(`/w/${workspace_slug}/automations?error=${encodeURIComponent(result.error)}`)
-                        }
-                      }}
-                    >
-                      <Button
-                        type="submit"
-                        variant="ghost"
-                        size="sm"
-                        className="h-8 text-xs text-destructive hover:bg-destructive/10 hover:text-destructive"
-                      >
-                        Delete
-                      </Button>
-                    </form>
-                  </div>
+                  <AutomationActions
+                    workspaceSlug={workspace_slug}
+                    ruleId={rule.id}
+                    ruleName={rule.name}
+                    isActive={rule.is_active}
+                  />
                 </div>
               )
             })}

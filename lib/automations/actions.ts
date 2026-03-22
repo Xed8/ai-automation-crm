@@ -2,6 +2,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database, Json } from '@/types/supabase'
 import { isJsonObject } from '@/lib/json'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { emitOutboundWebhook } from '@/lib/webhooks/outbound'
 
 export type ActionPayload = {
   workspaceId: string
@@ -142,6 +143,11 @@ async function handleAssignOwner(supabase: SupabaseClient<Database>, { workspace
   if (notificationError) {
     console.error('Failed to create assignment notification:', notificationError)
   }
+
+  emitOutboundWebhook(workspaceId, 'lead.assigned', {
+    lead_id: leadId,
+    assigned_to: assigneeId,
+  })
 
   return { success: true }
 }

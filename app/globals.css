@@ -4,7 +4,7 @@
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
+    --background: 240 12% 97.5%;
     --foreground: 240 10% 3.9%;
 
     --card: 0 0% 100%;
@@ -33,16 +33,18 @@
     --ring: 238 84% 67%;
 
     --radius: 0.5rem;
+
+    --sidebar: 240 8% 97%;
   }
 
   .dark {
-    --background: 240 10% 3.9%;
+    --background: 240 12% 2.5%;
     --foreground: 0 0% 98%;
 
-    --card: 240 10% 6%;
+    --card: 240 10% 5%;
     --card-foreground: 0 0% 98%;
 
-    --popover: 240 10% 6%;
+    --popover: 240 10% 5%;
     --popover-foreground: 0 0% 98%;
 
     --primary: 238 84% 72%;
@@ -63,6 +65,8 @@
     --border: 240 4% 16%;
     --input: 240 4% 16%;
     --ring: 238 84% 72%;
+
+    --sidebar: 240 8% 5.5%;
   }
 }
 
@@ -75,6 +79,8 @@
   }
   body {
     @apply min-h-screen bg-background text-foreground;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+    background-attachment: fixed;
   }
   h1,
   h2,
@@ -88,6 +94,86 @@
     background: hsl(var(--primary) / 0.15);
     color: hsl(var(--foreground));
   }
+}
+
+/* ── Landing page design tokens ────────────────────────────────────────── */
+:root {
+  --ink: #0a0a0f;
+  --ink-dim: #111118;
+  --ink-border: rgba(255,255,255,0.08);
+  --lp-surface: #f5f3ee;
+  --lp-surface-warm: #ede9e0;
+  --lp-accent: #ff4d1c;
+  --lp-accent2: #0057ff;
+  --lp-gold: #c8a84b;
+  --lp-text: #f5f3ee;
+  --lp-muted: rgba(245,243,238,0.45);
+  --lp-ease: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* ── Landing cursor ─────────────────────────────────────────────────────── */
+.lp-cursor-dot,
+.lp-cursor-ring {
+  position: fixed;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+  z-index: 9999;
+  border-radius: 50%;
+  mix-blend-mode: difference;
+  will-change: transform;
+}
+.lp-cursor-dot {
+  width: 8px;
+  height: 8px;
+  background: #fff;
+  margin: -4px 0 0 -4px;
+}
+.lp-cursor-ring {
+  width: 36px;
+  height: 36px;
+  border: 1.5px solid rgba(255,255,255,0.7);
+  margin: -18px 0 0 -18px;
+  background: transparent;
+}
+
+/* ── Landing body override (no theme texture on landing) ─────────────── */
+body.lp-active {
+  cursor: none;
+  background-image: none;
+  background-color: var(--ink);
+}
+
+/* ── Marquee ─────────────────────────────────────────────────────────── */
+@keyframes lp-marquee {
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+.lp-marquee-track {
+  display: flex;
+  width: max-content;
+  animation: lp-marquee 28s linear infinite;
+}
+
+/* ── Reveal animation ─────────────────────────────────────────────────── */
+.lp-reveal {
+  opacity: 0;
+  transform: translateY(40px);
+  transition: opacity 0.6s var(--lp-ease), transform 0.6s var(--lp-ease);
+}
+.lp-reveal.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* ── 3D card ──────────────────────────────────────────────────────────── */
+.lp-card-3d-wrapper {
+  perspective: 1000px;
+}
+.lp-card-3d {
+  transform-style: preserve-3d;
+  transition: transform 0.1s ease;
+  will-change: transform;
 }
 
 @layer components {

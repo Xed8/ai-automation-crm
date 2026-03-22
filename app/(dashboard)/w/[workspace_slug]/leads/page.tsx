@@ -1,12 +1,12 @@
 import Link from 'next/link'
-import { ArrowRight, BotMessageSquare, BriefcaseBusiness, CircleDollarSign, Clock, Funnel, Search, TrendingUp } from 'lucide-react'
-import { createPrivilegedServerClient } from '@/lib/supabase/privileged'
+import { BotMessageSquare, BriefcaseBusiness, CircleDollarSign, ArrowRight, Funnel, Search, TrendingUp } from 'lucide-react'
 import { requireWorkspaceScope } from '@/lib/workspace-context'
 import { getWorkspaceUsage } from '@/lib/billing/quotas'
-import { Badge } from '@/components/ui/badge'
+import { fetchLeadsPage } from '@/app/actions/crm'
 import { Button } from '@/components/ui/button'
 import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
+import { LeadsList } from '@/components/leads/leads-list'
 
 export default async function LeadsIndexPage({
   params,
@@ -18,31 +18,8 @@ export default async function LeadsIndexPage({
   const { workspace_slug } = await params
   const { q, status } = await searchParams
   const { workspace } = await requireWorkspaceScope(workspace_slug)
-  const supabase = await createPrivilegedServerClient()
 
-  // Build filtered query
-  let query = supabase
-    .from('leads')
-    .select('*, boards(name), stages(name)')
-    .eq('workspace_id', workspace.id)
-    .order('created_at', { ascending: false })
-
-  if (q?.trim()) {
-    const term = q.trim()
-    query = query.or(`firm_name.ilike.%${term}%,contact_name.ilike.%${term}%,email.ilike.%${term}%`)
-  }
-
-  if (status && status !== 'all') {
-    query = query.eq('status', status)
-  } else if (!status) {
-    query = query.eq('status', 'active')
-  }
-
-  const { data: leads, error } = await query
-
-  if (error) {
-    return <div className="p-6 text-destructive">Failed to load leads.</div>
-  }
+  const { items: leads, nextCursor } = await fetchLeadsPage(workspace_slug, { cursor: null, q, status })
 
   // Usage for progress bars
   const usage = await getWorkspaceUsage(workspace.id)
@@ -55,8 +32,8 @@ export default async function LeadsIndexPage({
     : Math.round((usage.ai_tokens_used / usage.limits.max_ai_tokens_per_month) * 100)
   const showAiBanner = aiPct >= 70
 
-  const activeLeads = leads?.filter((l) => l.status === 'active') ?? []
-  const totalValue = (leads ?? []).reduce((sum, l) => sum + (l.value ?? 0), 0)
+  const activeLeads = leads.filter((l) => l.status === 'active')
+  const totalValue = leads.reduce((sum, l) => sum + (l.value ?? 0), 0)
 
   const isFiltered = !!(q?.trim()) || (status && status !== 'active')
 
@@ -129,7 +106,7 @@ export default async function LeadsIndexPage({
               <span className="text-xs uppercase tracking-[0.24em] text-muted-foreground">All leads</span>
               <Funnel className="h-4 w-4 text-primary" />
             </div>
-            <div className="mt-3 text-3xl font-semibold">{leads?.length ?? 0}</div>
+            <div className="mt-3 text-3xl font-semibold">{leads.length}</div>
           </div>
           <div className="surface-card rounded-lg px-4 py-4">
             <div className="flex items-center justify-between">
@@ -176,7 +153,7 @@ export default async function LeadsIndexPage({
         )}
       </form>
 
-      {(!leads || leads.length === 0) ? (
+      {leads.length === 0 ? (
         <Card className="surface-card p-8 text-center">
           <CardHeader>
             <CardTitle className="text-2xl">{isFiltered ? 'No leads match your search' : 'No leads yet'}</CardTitle>
@@ -188,72 +165,13 @@ export default async function LeadsIndexPage({
           </CardHeader>
         </Card>
       ) : (
-        <div className="rounded-lg border border-border bg-card overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-border bg-muted/40">
-                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">Firm</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">Contact</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground hidden md:table-cell">Pipeline</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground hidden md:table-cell">Stage</th>
-                  <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground hidden lg:table-cell">Value</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground hidden lg:table-cell">Status</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground hidden xl:table-cell">Updated</th>
-                  <th className="px-4 py-3 w-10" />
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {leads.map((lead) => {
-                  const days = lead.updated_at
-                    ? Math.floor((Date.now() - new Date(lead.updated_at).getTime()) / 86400000)
-                    : null
-                  return (
-                    <tr key={lead.id} className="group hover:bg-muted/40 transition-colors">
-                      <td className="px-4 py-3 font-medium text-foreground max-w-[180px] truncate">
-                        {lead.firm_name}
-                      </td>
-                      <td className="px-4 py-3 text-muted-foreground max-w-[140px] truncate">
-                        {lead.contact_name || '—'}
-                      </td>
-                      <td className="px-4 py-3 text-muted-foreground hidden md:table-cell">
-                        {(lead.boards?.name as string) || '—'}
-                      </td>
-                      <td className="px-4 py-3 hidden md:table-cell">
-                        <Badge variant="secondary" className="font-normal">
-                          {(lead.stages?.name as string) || '—'}
-                        </Badge>
-                      </td>
-                      <td className="px-4 py-3 text-right font-medium text-foreground hidden lg:table-cell">
-                        {lead.value ? `$${lead.value.toLocaleString()}` : '—'}
-                      </td>
-                      <td className="px-4 py-3 hidden lg:table-cell">
-                        <Badge variant={lead.status === 'active' ? 'default' : 'secondary'} className="capitalize">
-                          {lead.status}
-                        </Badge>
-                      </td>
-                      <td className="px-4 py-3 hidden xl:table-cell">
-                        {days !== null && (
-                          <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                            <Clock className="h-3 w-3 shrink-0" />
-                            {days === 0 ? 'Today' : `${days}d ago`}
-                          </span>
-                        )}
-                      </td>
-                      <td className="px-4 py-3">
-                        <Button asChild size="sm" variant="ghost" className="h-7 w-7 p-0 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <Link href={`/w/${workspace_slug}/leads/${lead.id}`} aria-label={`Open ${lead.firm_name}`}>
-                            <ArrowRight className="h-4 w-4" />
-                          </Link>
-                        </Button>
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-          </div>
-        </div>
+        <LeadsList
+          workspaceSlug={workspace_slug}
+          initialItems={leads}
+          initialCursor={nextCursor}
+          q={q}
+          status={status}
+        />
       )}
     </div>
   )

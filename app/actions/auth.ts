@@ -54,3 +54,19 @@ export async function signout() {
   revalidatePath('/', 'layout')
   redirect('/login')
 }
+
+export async function requestPasswordReset(formData: FormData) {
+  const email = formData.get('email') as string
+  const origin = formData.get('origin') as string
+
+  const supabase = await createClient()
+  const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: `${origin}/auth/callback?next=/reset-password`,
+  })
+
+  if (error) {
+    redirect(`/forgot-password?message=${encodeURIComponent(error.message)}`)
+  }
+
+  redirect('/forgot-password?message=Check your email for a password reset link.&success=1')
+}
