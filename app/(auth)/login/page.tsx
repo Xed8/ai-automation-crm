@@ -1,8 +1,5 @@
 import Link from 'next/link'
 import { login } from '@/app/actions/auth'
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { AuthSubmitButton } from '@/components/shared/auth-submit-button'
 
 export default async function LoginPage({
@@ -13,58 +10,119 @@ export default async function LoginPage({
   const { message, success } = await searchParams
 
   return (
-    <Card className="surface-card mx-auto w-full max-w-lg border-white/70 bg-background/90">
-      <CardHeader className="space-y-4">
-        <span className="eyebrow w-fit">Welcome back</span>
-        <div className="space-y-2">
-          <CardTitle className="text-3xl">Sign in to your workspace</CardTitle>
-          <CardDescription className="text-base">
-            Use your team credentials to access leads, boards, forms, and workspace settings.
-          </CardDescription>
+    <div className="space-y-7">
+      {/* Header */}
+      <div className="space-y-2">
+        <p
+          className="text-xs font-semibold uppercase tracking-[0.2em]"
+          style={{ color: 'var(--lp-accent)', fontFamily: 'var(--font-dm)' }}
+        >
+          Welcome back
+        </p>
+        <h2
+          className="text-3xl font-extrabold tracking-[-0.03em]"
+          style={{ fontFamily: 'var(--font-syne)', color: 'var(--lp-text)' }}
+        >
+          Sign in to your workspace
+        </h2>
+        <p
+          className="text-sm"
+          style={{ color: 'var(--lp-muted)', fontFamily: 'var(--font-dm)', fontWeight: 300 }}
+        >
+          Access leads, pipelines, and your team settings.
+        </p>
+      </div>
+
+      {/* Alert */}
+      {message && (
+        <div
+          className="rounded-xl px-4 py-3 text-sm"
+          style={{
+            background: success === '1' ? 'rgba(74,222,128,0.08)' : 'rgba(255,77,28,0.08)',
+            border: `1px solid ${success === '1' ? 'rgba(74,222,128,0.2)' : 'rgba(255,77,28,0.2)'}`,
+            color: success === '1' ? '#4ade80' : 'var(--lp-accent)',
+            fontFamily: 'var(--font-dm)',
+          }}
+        >
+          {message}
         </div>
-      </CardHeader>
-      <form action={login} className="space-y-1">
-        <CardContent className="space-y-5">
-          {message && (
-            <div className={[
-              'rounded-[1.25rem] border px-4 py-3 text-sm',
-              success === '1'
-                ? 'border-green-500/20 bg-green-500/10 text-green-700 dark:text-green-400'
-                : 'border-destructive/20 bg-destructive/10 text-destructive',
-            ].join(' ')}>
-              {message}
-            </div>
-          )}
-          <div className="space-y-2">
-            <Label htmlFor="email" className="text-sm font-medium text-foreground">Email</Label>
-            <Input
-              id="email"
-              name="email"
-              type="email"
-              placeholder="you@agency.com"
-              required
-            />
-          </div>
-          <div className="space-y-2">
-            <div className="flex items-center justify-between gap-4">
-              <Label htmlFor="password" className="text-sm font-medium text-foreground">Password</Label>
-              <Link href="/forgot-password" className="text-xs text-muted-foreground underline-offset-4 hover:underline hover:text-primary">
-                Forgot password?
-              </Link>
-            </div>
-            <Input id="password" name="password" type="password" required />
-          </div>
-        </CardContent>
-        <CardFooter className="flex-col items-stretch gap-4">
-          <AuthSubmitButton label="Sign in" loadingText="Signing in…" />
-          <div className="text-center text-sm text-muted-foreground">
-            Don&apos;t have an account?{" "}
-            <Link href="/register" className="font-semibold text-primary underline-offset-4 hover:underline">
-              Create one
+      )}
+
+      {/* Form */}
+      <form action={login} className="auth-form space-y-5">
+        <div className="space-y-1.5">
+          <label
+            htmlFor="email"
+            className="block text-xs font-semibold uppercase tracking-[0.1em]"
+            style={{ color: 'var(--lp-muted)', fontFamily: 'var(--font-dm)' }}
+          >
+            Email
+          </label>
+          <input
+            id="email"
+            name="email"
+            type="email"
+            placeholder="you@agency.com"
+            required
+            className="auth-input w-full rounded-xl px-4 py-3 text-sm outline-none transition-all"
+            style={{
+              background: 'rgba(255,255,255,0.05)',
+              border: '1px solid rgba(255,255,255,0.1)',
+              color: 'var(--lp-text)',
+              fontFamily: 'var(--font-dm)',
+            }}
+          />
+        </div>
+
+        <div className="space-y-1.5">
+          <div className="flex items-center justify-between">
+            <label
+              htmlFor="password"
+              className="block text-xs font-semibold uppercase tracking-[0.1em]"
+              style={{ color: 'var(--lp-muted)', fontFamily: 'var(--font-dm)' }}
+            >
+              Password
+            </label>
+            <Link
+              href="/forgot-password"
+              className="text-xs transition-opacity hover:opacity-70"
+              style={{ color: 'var(--lp-muted)', fontFamily: 'var(--font-dm)' }}
+            >
+              Forgot password?
             </Link>
           </div>
-        </CardFooter>
+          <input
+            id="password"
+            name="password"
+            type="password"
+            required
+            className="auth-input w-full rounded-xl px-4 py-3 text-sm outline-none transition-all"
+            style={{
+              background: 'rgba(255,255,255,0.05)',
+              border: '1px solid rgba(255,255,255,0.1)',
+              color: 'var(--lp-text)',
+              fontFamily: 'var(--font-dm)',
+            }}
+          />
+        </div>
+
+        <AuthSubmitButton label="Sign in" loadingText="Signing in…" />
       </form>
-    </Card>
+
+      {/* Footer link */}
+      <p
+        className="text-center text-sm"
+        style={{ color: 'var(--lp-muted)', fontFamily: 'var(--font-dm)' }}
+      >
+        Don&apos;t have an account?{' '}
+        <Link
+          href="/register"
+          className="font-semibold transition-opacity hover:opacity-80"
+          style={{ color: 'var(--lp-text)' }}
+        >
+          Create one free
+        </Link>
+      </p>
+    </div>
   )
 }

@@ -85,12 +85,32 @@ export function WorkspaceNav({
             href={href}
             className={cn(
               'relative inline-flex min-w-fit items-center gap-2.5 rounded-md px-3 py-2 text-sm font-medium transition-all duration-150',
-              isActive
-                ? 'bg-primary/10 text-primary before:absolute before:left-0 before:top-1 before:bottom-1 before:w-0.5 before:rounded-full before:bg-primary'
-                : 'text-muted-foreground hover:bg-muted/70 hover:text-foreground'
+              orientation === 'vertical' ? '' : 'whitespace-nowrap'
             )}
+            style={
+              isActive
+                ? {
+                    background: 'rgba(255,77,28,0.10)',
+                    color: 'var(--lp-accent)',
+                    fontFamily: 'var(--font-dm)',
+                  }
+                : {
+                    color: 'rgba(245,243,238,0.45)',
+                    fontFamily: 'var(--font-dm)',
+                  }
+            }
           >
-            <Icon className={cn('h-4 w-4 shrink-0', isActive ? 'text-primary' : '')} />
+            {/* Left accent rail — vertical only */}
+            {isActive && orientation === 'vertical' && (
+              <span
+                className="absolute left-0 top-1 bottom-1 w-0.5 rounded-full"
+                style={{ background: 'var(--lp-accent)' }}
+              />
+            )}
+            <Icon
+              className="h-4 w-4 shrink-0"
+              style={{ color: isActive ? 'var(--lp-accent)' : 'rgba(245,243,238,0.35)' }}
+            />
             <span>{item.label}</span>
           </Link>
         )

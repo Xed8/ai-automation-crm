@@ -111,6 +111,54 @@
   --lp-ease: cubic-bezier(0.16, 1, 0.3, 1);
 }
 
+/* ── Dashboard dark theme scope ─────────────────────────────────────────── */
+/* Applied via class="dash" on the root layout div — overrides Tailwind tokens */
+.dash {
+  --background: 0 0% 4%;        /* ~#0a0a0a */
+  --foreground: 0 0% 95%;
+  --card: 240 6% 7%;            /* #111118 */
+  --card-foreground: 0 0% 95%;
+  --muted: 240 5% 12%;
+  --muted-foreground: 240 5% 55%;
+  --border: 240 5% 13%;
+  --input: 240 5% 13%;
+  --primary: 16 100% 57%;       /* #ff4d1c orange accent */
+  --primary-foreground: 0 0% 100%;
+  --secondary: 240 5% 12%;
+  --secondary-foreground: 0 0% 95%;
+  --accent: 240 5% 12%;
+  --accent-foreground: 0 0% 95%;
+  --destructive: 0 72% 51%;
+  --destructive-foreground: 0 0% 100%;
+  --ring: 16 100% 57%;
+  --sidebar: 240 7% 6%;         /* slightly lighter than bg */
+}
+
+/* ── Auth form inputs ───────────────────────────────────────────────────── */
+.auth-input:focus {
+  border-color: rgba(255, 77, 28, 0.5) !important;
+  box-shadow: 0 0 0 3px rgba(255, 77, 28, 0.08);
+}
+
+/* Auth page submit button — overrides shadcn Button when inside .auth-form */
+.auth-form button[type="submit"] {
+  width: 100%;
+  background: var(--lp-accent) !important;
+  color: #fff !important;
+  border-radius: 0.75rem !important;
+  border: none !important;
+  font-family: var(--font-dm) !important;
+  font-size: 0.875rem !important;
+  font-weight: 600 !important;
+  padding-top: 0.75rem !important;
+  padding-bottom: 0.75rem !important;
+  box-shadow: none !important;
+}
+.auth-form button[type="submit"]:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--lp-accent) 88%, #000) !important;
+  transform: none !important;
+}
+
 /* ── Landing cursor ─────────────────────────────────────────────────────── */
 .lp-cursor-dot,
 .lp-cursor-ring {
@@ -196,11 +244,93 @@ body.lp-active {
     @apply transition-colors duration-150 hover:bg-muted/60;
   }
 
+  /* ── Dash dark overrides for shared utility classes ── */
+  .dash .surface-panel {
+    background: rgba(255,255,255,0.04) !important;
+    border-color: rgba(255,255,255,0.07) !important;
+  }
+  .dash .surface-card {
+    background: rgba(255,255,255,0.04) !important;
+    border-color: rgba(255,255,255,0.07) !important;
+  }
+  .dash .surface-card-hover:hover {
+    background: rgba(255,255,255,0.07) !important;
+    border-color: rgba(255,77,28,0.2) !important;
+  }
+  /* Code blocks and pre in dark dash */
+  .dash pre,
+  .dash code {
+    background: rgba(0,0,0,0.35) !important;
+    color: var(--lp-text) !important;
+  }
+  /* Select dropdowns in dark dash */
+  .dash select {
+    background: rgba(255,255,255,0.05) !important;
+    border-color: rgba(255,255,255,0.12) !important;
+    color: var(--lp-text) !important;
+  }
+  .dash select:focus {
+    border-color: rgba(255,77,28,0.5) !important;
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(255,77,28,0.08);
+  }
+  /* Inputs in dark dash */
+  .dash input:not([type='submit']):not([type='checkbox']):not([type='radio']) {
+    background: rgba(255,255,255,0.05) !important;
+    border-color: rgba(255,255,255,0.12) !important;
+    color: var(--lp-text) !important;
+  }
+  .dash input:focus {
+    border-color: rgba(255,77,28,0.5) !important;
+    box-shadow: 0 0 0 3px rgba(255,77,28,0.08) !important;
+  }
+  /* Shadcn tabs in dark dash */
+  .dash [role='tablist'] {
+    background: rgba(255,255,255,0.05) !important;
+    border: 1px solid rgba(255,255,255,0.07) !important;
+  }
+  .dash [role='tab'][data-state='active'] {
+    background: rgba(255,77,28,0.15) !important;
+    color: var(--lp-accent) !important;
+  }
+  .dash [role='tab'] {
+    color: rgba(245,243,238,0.5) !important;
+  }
+  /* Progress bar in dark dash */
+  .dash [role='progressbar'] > div {
+    background: var(--lp-accent) !important;
+  }
+
   .surface-card-hover:hover {
     border-color: hsl(var(--primary) / 0.3);
   }
 
   .eyebrow {
     @apply inline-flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.15em] text-muted-foreground;
+  }
+
+  /* Eyebrow + heading overrides inside .dash */
+  .dash .eyebrow {
+    color: var(--lp-accent) !important;
+    font-family: var(--font-dm) !important;
+  }
+  .dash h1,
+  .dash h2,
+  .dash h3,
+  .dash h4 {
+    color: var(--lp-text) !important;
+    font-family: var(--font-syne) !important;
+  }
+  .dash p,
+  .dash span:not([class*='badge']):not([class*='eyebrow']) {
+    font-family: var(--font-dm);
+  }
+  /* CardTitle + CardDescription in dark dash */
+  .dash [class*='CardTitle'],
+  .dash .text-foreground {
+    color: var(--lp-text) !important;
+  }
+  .dash .text-muted-foreground {
+    color: var(--lp-muted) !important;
   }
 }

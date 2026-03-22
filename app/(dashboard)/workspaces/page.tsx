@@ -1,16 +1,12 @@
 import Link from 'next/link'
-import { ArrowRight, Building2, Clock3, Layers3, Plus, Sparkles, TrendingUp } from 'lucide-react'
+import { ArrowRight, Building2, Layers3, Plus, TrendingUp } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import { checkWorkspaceLimit } from '@/lib/billing/quotas'
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { DeleteWorkspaceButton } from '@/components/shared/delete-workspace-button'
 
 function formatWorkspaceDate(value: string | null) {
-  if (!value) {
-    return 'Recently created'
-  }
-
+  if (!value) return 'Recently created'
   return new Date(value).toLocaleDateString(undefined, {
     month: 'short',
     day: 'numeric',
@@ -27,187 +23,220 @@ export default async function WorkspacesListPage() {
   ])
 
   if (error) {
-    return <div className="text-destructive">Failed to load workspaces</div>
+    return <div style={{ color: 'var(--lp-accent)' }}>Failed to load workspaces</div>
   }
 
   const workspaceCount = workspaces.length
-  const latestWorkspace = workspaces[0] ?? null
   const quota = user ? await checkWorkspaceLimit(user.id) : null
-  const usagePct = quota ? Math.round((quota.current / quota.limit) * 100) : 0
   const showQuotaBanner = quota && !quota.allowed
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-6">
+      {/* Quota banner */}
       {showQuotaBanner && (
-        <div className="flex items-center justify-between gap-4 rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-700 dark:text-amber-300">
+        <div
+          className="flex items-center justify-between gap-4 rounded-xl px-4 py-3 text-sm"
+          style={{
+            background: 'rgba(245,158,11,0.08)',
+            border: '1px solid rgba(245,158,11,0.2)',
+            color: '#fbbf24',
+            fontFamily: 'var(--font-dm)',
+          }}
+        >
           <div className="flex items-center gap-2">
             <TrendingUp className="h-4 w-4 shrink-0" />
             <span>
-              You&apos;ve used <strong>{quota.current}</strong> / {quota.limit} workspaces on your current plan.
-              Upgrade to Pro to create up to 10.
+              You&apos;ve used <strong>{quota.current}</strong> / {quota.limit} workspaces on your plan.
+              Upgrade to create more.
             </span>
           </div>
           <Button asChild size="sm" variant="outline" className="shrink-0 h-7 text-xs">
-            <Link href="/workspaces/create">Upgrade to Pro →</Link>
+            <Link href="/workspaces/create">Upgrade →</Link>
           </Button>
         </div>
       )}
 
-      <section className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_340px]">
-        <Card className="surface-panel hero-grid relative overflow-hidden">
-          <div className="absolute inset-y-0 right-0 hidden w-1/2 bg-gradient-to-l from-primary/10 to-transparent lg:block" />
-          <CardContent className="relative p-6 sm:p-7">
-            <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
-              <div className="space-y-3">
-                <span className="eyebrow w-fit">
-                  <Sparkles className="h-3.5 w-3.5" />
-                  Overview
-                </span>
-                <div className="space-y-2">
-                  <h2 className="max-w-3xl text-3xl font-semibold sm:text-4xl">
-                    Choose where you want to work today.
-                  </h2>
-                  <p className="text-sm text-muted-foreground sm:text-base">
-                    The dashboard is trimmed down so the workspace list stays front and center.
-                  </p>
-                </div>
-              </div>
-
-              <Button asChild size="lg" className="w-full lg:w-auto">
-                <Link href="/workspaces/create">
-                  <Plus className="h-4 w-4" />
-                  New workspace
-                </Link>
-              </Button>
-            </div>
-
-            <div className="mt-6 grid gap-3 md:grid-cols-3">
-              <div className="rounded-[1.5rem] border border-border/70 bg-background/60 px-4 py-4">
-                <div className="flex items-center gap-2 text-xs uppercase tracking-[0.24em] text-muted-foreground">
-                  <Layers3 className="h-4 w-4 text-primary" />
-                  Workspaces
-                </div>
-                <div className="mt-3 text-3xl font-semibold">{workspaceCount}</div>
-              </div>
-
-              <div className="rounded-[1.5rem] border border-border/70 bg-background/60 px-4 py-4">
-                <div className="flex items-center gap-2 text-xs uppercase tracking-[0.24em] text-muted-foreground">
-                  <Clock3 className="h-4 w-4 text-primary" />
-                  Newest
-                </div>
-                <div className="mt-3 text-lg font-semibold">
-                  {latestWorkspace ? latestWorkspace.name : 'No workspace yet'}
-                </div>
-              </div>
-
-              <div className="rounded-[1.5rem] border border-border/70 bg-background/60 px-4 py-4">
-                <div className="text-xs uppercase tracking-[0.24em] text-muted-foreground">Next step</div>
-                <div className="mt-3 text-lg font-semibold">
-                  {workspaceCount === 0 ? 'Create your first workspace' : 'Open an active workspace'}
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="surface-card border-primary/20 bg-primary/5">
-          <CardHeader>
-            <CardTitle className="text-2xl">Important</CardTitle>
-            <CardDescription>
-              {workspaceCount === 0
-                ? 'You need one workspace before the CRM can be used.'
-                : `${latestWorkspace?.name ?? 'Your latest workspace'} is ready to open.`}
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3 text-sm text-muted-foreground">
-            <div className="rounded-[1.35rem] bg-background/70 px-4 py-4">
-              {workspaceCount === 0
-                ? 'Start with one workspace for one client or team.'
-                : 'Use separate workspaces for different clients, teams, or experiments.'}
-            </div>
-          </CardContent>
-          <CardFooter>
-            <Button asChild className="w-full justify-between">
-              <Link href={workspaceCount === 0 ? '/workspaces/create' : `/w/${latestWorkspace?.slug}`}>
-                {workspaceCount === 0 ? 'Create workspace' : 'Open latest workspace'}
-                <ArrowRight className="h-4 w-4" />
-              </Link>
-            </Button>
-          </CardFooter>
-        </Card>
-      </section>
-
-      <section className="space-y-4">
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <h3 className="text-2xl font-semibold sm:text-3xl">Workspace directory</h3>
-            <p className="text-sm text-muted-foreground">Open a workspace or create a new one.</p>
+      {/* Hero banner */}
+      <div
+        className="relative overflow-hidden rounded-2xl px-7 py-8"
+        style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}
+      >
+        {/* Ambient orb */}
+        <div
+          className="pointer-events-none absolute rounded-full"
+          style={{
+            width: 320,
+            height: 320,
+            top: '-30%',
+            right: '-5%',
+            background: 'radial-gradient(circle, rgba(255,77,28,0.08) 0%, transparent 70%)',
+          }}
+        />
+        <div className="relative flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+          <div className="space-y-2">
+            <p
+              className="text-xs font-semibold uppercase tracking-[0.2em]"
+              style={{ color: 'var(--lp-accent)', fontFamily: 'var(--font-dm)' }}
+            >
+              Workspace hub
+            </p>
+            <h2
+              className="text-3xl font-extrabold tracking-[-0.03em]"
+              style={{ color: 'var(--lp-text)', fontFamily: 'var(--font-syne)' }}
+            >
+              Choose where to work today.
+            </h2>
+            <p className="text-sm" style={{ color: 'var(--lp-muted)', fontFamily: 'var(--font-dm)' }}>
+              Each workspace is an isolated CRM for a client or team.
+            </p>
           </div>
+
+          {/* Stats chips */}
+          <div className="flex shrink-0 gap-3">
+            <div
+              className="rounded-xl px-4 py-3.5"
+              style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}
+            >
+              <div className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-[0.15em]" style={{ color: 'var(--lp-muted)', fontFamily: 'var(--font-dm)' }}>
+                <Layers3 className="h-3.5 w-3.5" style={{ color: 'var(--lp-accent)' }} />
+                Workspaces
+              </div>
+              <div
+                className="mt-2 text-3xl font-extrabold"
+                style={{ color: 'var(--lp-text)', fontFamily: 'var(--font-syne)' }}
+              >
+                {workspaceCount}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Workspace list */}
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <p
+            className="text-xs font-semibold uppercase tracking-[0.15em]"
+            style={{ color: 'var(--lp-muted)', fontFamily: 'var(--font-dm)' }}
+          >
+            Your workspaces
+          </p>
+          <Button
+            asChild
+            size="sm"
+            className="gap-2 text-sm font-semibold h-8"
+            style={{ background: 'var(--lp-accent)', color: '#fff', border: 'none' }}
+          >
+            <Link href="/workspaces/create">
+              <Plus className="h-3.5 w-3.5" />
+              New
+            </Link>
+          </Button>
         </div>
 
         {workspaceCount === 0 ? (
-          <Card className="surface-card p-4 text-center sm:p-8">
-            <CardHeader>
-              <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-[1.5rem] bg-primary/10 text-primary">
-                <Building2 className="h-6 w-6" />
-              </div>
-              <CardTitle className="mt-3 text-3xl">No workspaces yet</CardTitle>
-              <CardDescription className="mx-auto max-w-xl text-base">
-                Create your first workspace to get into the CRM.
-              </CardDescription>
-            </CardHeader>
-            <CardFooter className="justify-center">
-              <Button asChild size="lg">
-                <Link href="/workspaces/create">Create a workspace</Link>
-              </Button>
-            </CardFooter>
-          </Card>
+          <div
+            className="rounded-2xl p-10 text-center"
+            style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}
+          >
+            <div
+              className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl"
+              style={{ background: 'rgba(255,77,28,0.12)' }}
+            >
+              <Building2 className="h-6 w-6" style={{ color: 'var(--lp-accent)' }} />
+            </div>
+            <h3
+              className="mt-4 text-xl font-bold"
+              style={{ color: 'var(--lp-text)', fontFamily: 'var(--font-syne)' }}
+            >
+              No workspaces yet
+            </h3>
+            <p className="mt-1 text-sm" style={{ color: 'var(--lp-muted)', fontFamily: 'var(--font-dm)' }}>
+              Create your first workspace to start using the CRM.
+            </p>
+            <Button
+              asChild
+              size="sm"
+              className="mt-5 gap-2"
+              style={{ background: 'var(--lp-accent)', color: '#fff', border: 'none' }}
+            >
+              <Link href="/workspaces/create">
+                <Plus className="h-3.5 w-3.5" />
+                Create a workspace
+              </Link>
+            </Button>
+          </div>
         ) : (
-          <div className="grid gap-4 md:grid-cols-2 2xl:grid-cols-3">
+          <div className="grid gap-3 md:grid-cols-2 2xl:grid-cols-3">
             {workspaces.map((workspace) => (
-              <Card key={workspace.id} className="surface-card surface-card-hover">
-                <CardHeader className="space-y-4">
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="space-y-2">
-                      <CardTitle className="text-2xl">{workspace.name}</CardTitle>
-                      <CardDescription>/{workspace.slug}</CardDescription>
-                    </div>
-                    <span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
-                      Ready
-                    </span>
+              <div
+                key={workspace.id}
+                className="group rounded-2xl p-5 transition-all"
+                style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0 flex-1">
+                    <h3
+                      className="truncate text-lg font-bold"
+                      style={{ color: 'var(--lp-text)', fontFamily: 'var(--font-syne)' }}
+                    >
+                      {workspace.name}
+                    </h3>
+                    <p className="text-xs mt-0.5" style={{ color: 'var(--lp-muted)', fontFamily: 'var(--font-dm)' }}>
+                      /{workspace.slug}
+                    </p>
                   </div>
+                  <span
+                    className="shrink-0 rounded-md px-2 py-0.5 text-[10px] font-semibold"
+                    style={{ background: 'rgba(52,211,153,0.1)', color: '#34d399', border: '1px solid rgba(52,211,153,0.2)', fontFamily: 'var(--font-dm)' }}
+                  >
+                    Active
+                  </span>
+                </div>
 
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    <div className="rounded-[1.35rem] bg-secondary/70 px-4 py-4 text-sm">
-                      <div className="text-xs uppercase tracking-[0.24em] text-muted-foreground">Created</div>
-                      <div className="mt-2 font-semibold text-foreground">
-                        {formatWorkspaceDate(workspace.created_at)}
-                      </div>
-                    </div>
-                    <div className="rounded-[1.35rem] bg-secondary/70 px-4 py-4 text-sm">
-                      <div className="text-xs uppercase tracking-[0.24em] text-muted-foreground">Path</div>
-                      <div className="mt-2 font-semibold text-foreground">/w/{workspace.slug}</div>
+                <div className="mt-4 grid grid-cols-2 gap-2">
+                  <div
+                    className="rounded-lg px-3 py-2.5"
+                    style={{ background: 'rgba(255,255,255,0.04)' }}
+                  >
+                    <div className="text-[10px] uppercase tracking-[0.18em]" style={{ color: 'var(--lp-muted)', fontFamily: 'var(--font-dm)' }}>Created</div>
+                    <div className="mt-1 text-sm font-semibold" style={{ color: 'var(--lp-text)', fontFamily: 'var(--font-dm)' }}>
+                      {formatWorkspaceDate(workspace.created_at)}
                     </div>
                   </div>
-                </CardHeader>
+                  <div
+                    className="rounded-lg px-3 py-2.5"
+                    style={{ background: 'rgba(255,255,255,0.04)' }}
+                  >
+                    <div className="text-[10px] uppercase tracking-[0.18em]" style={{ color: 'var(--lp-muted)', fontFamily: 'var(--font-dm)' }}>Path</div>
+                    <div className="mt-1 text-sm font-semibold truncate" style={{ color: 'var(--lp-text)', fontFamily: 'var(--font-dm)' }}>
+                      /w/{workspace.slug}
+                    </div>
+                  </div>
+                </div>
 
-                <CardFooter className="flex flex-col gap-3 sm:flex-row">
-                  <Button asChild className="w-full justify-between sm:flex-1">
+                <div className="mt-4 flex gap-2">
+                  <Button
+                    asChild
+                    size="sm"
+                    className="flex-1 justify-between text-sm font-semibold"
+                    style={{ background: 'var(--lp-accent)', color: '#fff', border: 'none' }}
+                  >
                     <Link href={`/w/${workspace.slug}`}>
                       Open workspace
-                      <ArrowRight className="h-4 w-4" />
+                      <ArrowRight className="h-3.5 w-3.5" />
                     </Link>
                   </Button>
                   <DeleteWorkspaceButton
                     workspaceSlug={workspace.slug}
                     workspaceName={workspace.name}
                   />
-                </CardFooter>
-              </Card>
+                </div>
+              </div>
             ))}
           </div>
         )}
-      </section>
+      </div>
     </div>
   )
 }

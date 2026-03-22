@@ -153,8 +153,15 @@ export default async function WorkspaceIndexPage({
 
       {/* Page header */}
       <div className="flex flex-col gap-1">
-        <h1 className="text-2xl font-semibold tracking-tight">{workspace.name}</h1>
-        <p className="text-sm text-muted-foreground">Overview · {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}</p>
+        <h1
+          className="text-2xl font-extrabold tracking-[-0.03em]"
+          style={{ fontFamily: 'var(--font-syne)', color: 'var(--lp-text)' }}
+        >
+          {workspace.name}
+        </h1>
+        <p className="text-sm" style={{ color: 'var(--lp-muted)', fontFamily: 'var(--font-dm)' }}>
+          Overview · {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
+        </p>
       </div>
 
       {/* Stat bar */}
@@ -165,14 +172,22 @@ export default async function WorkspaceIndexPage({
             <Link
               key={s.label}
               href={s.href}
-              className="group flex items-center gap-3 rounded-xl border border-border bg-card px-4 py-3.5 transition-all hover:border-primary/20 hover:shadow-soft"
+              className="group flex items-center gap-3 rounded-xl px-4 py-3.5 transition-all"
+              style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}
             >
               <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${s.bg}`}>
                 <Icon className={`h-4 w-4 ${s.color}`} />
               </div>
               <div>
-                <div className="text-2xl font-semibold tabular-nums leading-none">{s.value}</div>
-                <div className="mt-0.5 text-xs text-muted-foreground">{s.label}</div>
+                <div
+                  className="text-2xl font-semibold tabular-nums leading-none"
+                  style={{ color: 'var(--lp-text)', fontFamily: 'var(--font-syne)' }}
+                >
+                  {s.value}
+                </div>
+                <div className="mt-0.5 text-xs" style={{ color: 'var(--lp-muted)', fontFamily: 'var(--font-dm)' }}>
+                  {s.label}
+                </div>
               </div>
             </Link>
           )
@@ -198,24 +213,35 @@ export default async function WorkspaceIndexPage({
         <div className="space-y-5">
 
           {/* Priority action */}
-          <div className={[
-            'rounded-xl border p-5',
-            priority.tone === 'warning'
-              ? 'border-amber-500/25 bg-amber-500/5'
-              : 'border-emerald-500/25 bg-emerald-500/5',
-          ].join(' ')}>
+          <div
+            className="rounded-xl p-5"
+            style={{
+              background: priority.tone === 'warning' ? 'rgba(245,158,11,0.06)' : 'rgba(52,211,153,0.06)',
+              border: `1px solid ${priority.tone === 'warning' ? 'rgba(245,158,11,0.18)' : 'rgba(52,211,153,0.18)'}`,
+            }}
+          >
             <div className="flex items-start justify-between gap-4">
               <div className="space-y-1">
                 <div className="flex items-center gap-2">
                   {priority.tone === 'warning'
-                    ? <AlertCircle className="h-4 w-4 text-amber-500" />
-                    : <CheckCircle2 className="h-4 w-4 text-emerald-500" />}
-                  <span className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                    ? <AlertCircle className="h-4 w-4 text-amber-400" />
+                    : <CheckCircle2 className="h-4 w-4 text-emerald-400" />}
+                  <span
+                    className="text-xs font-semibold uppercase tracking-[0.12em]"
+                    style={{ color: 'var(--lp-muted)', fontFamily: 'var(--font-dm)' }}
+                  >
                     {priority.tone === 'warning' ? 'Action needed' : 'All good'}
                   </span>
                 </div>
-                <h2 className="text-lg font-semibold">{priority.title}</h2>
-                <p className="text-sm text-muted-foreground">{priority.body}</p>
+                <h2
+                  className="text-lg font-semibold"
+                  style={{ color: 'var(--lp-text)', fontFamily: 'var(--font-syne)' }}
+                >
+                  {priority.title}
+                </h2>
+                <p className="text-sm" style={{ color: 'var(--lp-muted)', fontFamily: 'var(--font-dm)' }}>
+                  {priority.body}
+                </p>
               </div>
             </div>
             <div className="mt-4 flex flex-wrap gap-2">
@@ -245,28 +271,37 @@ export default async function WorkspaceIndexPage({
 
           {/* Due tasks */}
           {dueTasks && dueTasks.length > 0 && (
-            <div className="rounded-xl border border-border bg-card">
-              <div className="flex items-center justify-between border-b border-border px-4 py-3">
+            <div className="rounded-xl overflow-hidden" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}>
+              <div className="flex items-center justify-between px-4 py-3" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
                 <div className="flex items-center gap-2">
-                  <Clock className="h-3.5 w-3.5 text-amber-500" />
-                  <span className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                  <Clock className="h-3.5 w-3.5 text-amber-400" />
+                  <span
+                    className="text-xs font-semibold uppercase tracking-[0.12em]"
+                    style={{ color: 'var(--lp-muted)', fontFamily: 'var(--font-dm)' }}
+                  >
                     Due today · {dueTasks.length}
                   </span>
                 </div>
-                <Button asChild variant="ghost" size="sm" className="h-6 text-xs text-muted-foreground">
+                <Button asChild variant="ghost" size="sm" className="h-6 text-xs" style={{ color: 'var(--lp-muted)' } as React.CSSProperties}>
                   <Link href={`/w/${workspace_slug}/leads`}>View all</Link>
                 </Button>
               </div>
-              <div className="divide-y divide-border">
-                {dueTasks.map((task) => {
+              <div>
+                {dueTasks.map((task, i) => {
                   const leadName = (task.leads as { firm_name?: string } | null)?.firm_name
                   const isOverdue = task.due_date && task.due_date < todayISO
                   return (
-                    <div key={task.id} className="flex items-start gap-3 px-4 py-3">
-                      <div className={`mt-0.5 h-1.5 w-1.5 shrink-0 rounded-full ${isOverdue ? 'bg-destructive' : 'bg-amber-500'}`} />
+                    <div
+                      key={task.id}
+                      className="flex items-start gap-3 px-4 py-3"
+                      style={i > 0 ? { borderTop: '1px solid rgba(255,255,255,0.05)' } : undefined}
+                    >
+                      <div className={`mt-0.5 h-1.5 w-1.5 shrink-0 rounded-full ${isOverdue ? 'bg-red-500' : 'bg-amber-400'}`} />
                       <div className="min-w-0 flex-1">
-                        <p className="text-sm font-medium leading-snug truncate">{task.title}</p>
-                        <p className="mt-0.5 text-xs text-muted-foreground truncate">
+                        <p className="text-sm font-medium leading-snug truncate" style={{ color: 'var(--lp-text)', fontFamily: 'var(--font-dm)' }}>
+                          {task.title}
+                        </p>
+                        <p className="mt-0.5 text-xs truncate" style={{ color: 'var(--lp-muted)', fontFamily: 'var(--font-dm)' }}>
                           {leadName ?? '—'}{isOverdue ? ' · Overdue' : ''}
                         </p>
                       </div>
@@ -280,18 +315,24 @@ export default async function WorkspaceIndexPage({
 
         {/* Right — quick nav */}
         <div className="space-y-2">
-          <p className="px-1 text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">Navigate</p>
+          <p
+            className="px-1 text-xs font-semibold uppercase tracking-[0.12em]"
+            style={{ color: 'var(--lp-muted)', fontFamily: 'var(--font-dm)' }}
+          >
+            Navigate
+          </p>
           {navLinks.map((link) => {
             const Icon = link.icon
             return (
               <Link
                 key={link.label}
                 href={link.href}
-                className="flex items-center gap-3 rounded-lg border border-border bg-card px-3.5 py-3 text-sm font-medium transition-all hover:border-primary/20 hover:bg-muted/50 hover:text-foreground"
+                className="flex items-center gap-3 rounded-lg px-3.5 py-3 text-sm font-medium transition-all"
+                style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)', color: 'var(--lp-text)', fontFamily: 'var(--font-dm)' }}
               >
-                <Icon className="h-4 w-4 shrink-0 text-muted-foreground" />
+                <Icon className="h-4 w-4 shrink-0" style={{ color: 'var(--lp-muted)' }} />
                 {link.label}
-                <ArrowRight className="ml-auto h-3.5 w-3.5 text-muted-foreground/40" />
+                <ArrowRight className="ml-auto h-3.5 w-3.5" style={{ color: 'rgba(245,243,238,0.2)' }} />
               </Link>
             )
           })}

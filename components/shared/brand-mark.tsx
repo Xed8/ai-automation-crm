@@ -9,17 +9,23 @@ interface BrandMarkProps {
 
 export function BrandMark({ className, compact = false, href = '/' }: BrandMarkProps) {
   const content = (
-    <div className={cn('flex items-center gap-3', className)}>
-      <div className="relative flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-        <span className="relative font-display text-sm font-bold">A</span>
+    <div className={cn('flex items-center gap-2.5', className)}>
+      <div
+        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg font-bold text-sm text-white"
+        style={{ background: 'var(--lp-accent)', fontFamily: 'var(--font-syne)' }}
+      >
+        L
       </div>
       <div className="flex flex-col leading-none">
-        <span className="font-display text-sm font-semibold tracking-tight text-foreground">
-          Agency CRM
+        <span
+          className="text-sm font-bold tracking-tight"
+          style={{ color: 'var(--lp-text)', fontFamily: 'var(--font-syne)' }}
+        >
+          LeadFlow
         </span>
         {!compact && (
-          <span className="mt-0.5 text-xs text-muted-foreground">
-            Pipeline control for modern agency teams
+          <span className="mt-0.5 text-xs" style={{ color: 'var(--lp-muted)', fontFamily: 'var(--font-dm)' }}>
+            Pipeline control for modern agencies
           </span>
         )}
       </div>
