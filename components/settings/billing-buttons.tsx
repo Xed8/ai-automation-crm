@@ -2,7 +2,6 @@
 
 import { useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import { toast } from 'sonner'
 import { upgradeToProAction, downgradeToFreeAction } from '@/app/actions/billing'
 import { Button } from '@/components/ui/button'
 import { Loader2 } from 'lucide-react'

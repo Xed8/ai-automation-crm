@@ -1,7 +1,6 @@
 import { createPrivilegedServerClient } from '@/lib/supabase/privileged'
 import { requireWorkspaceScope } from '@/lib/workspace-context'
 import { fetchActivityPage } from '@/app/actions/crm'
-import { cn } from '@/lib/utils'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { AIActions } from '@/components/leads/ai-actions'
 import { TaskList } from '@/components/leads/task-list'
@@ -69,8 +68,6 @@ export default async function LeadDetailPage({
           <LeadHeader
             workspaceSlug={workspace_slug}
             lead={lead}
-            boardName={boardName}
-            stageName={stageName}
           />
           <p className="mt-1.5 text-sm text-muted-foreground">{boardName} / {stageName}</p>
           <div className="mt-4 grid gap-3 sm:grid-cols-3">

@@ -157,7 +157,7 @@ export function KanbanBoard({ stages, leads, workspaceSlug, boardId }: KanbanBoa
     })
   }
 
-  const handleDeleteStage = (stageId: string, stageName: string, leadCount: number) => {
+  const handleDeleteStage = (stageId: string, stageName: string) => {
     startDeleteTransition(async () => {
       const result = await deleteStage(workspaceSlug, stageId)
       if (result?.error) {
@@ -273,7 +273,7 @@ export function KanbanBoard({ stages, leads, workspaceSlug, boardId }: KanbanBoa
                           <AlertDialogFooter>
                             <AlertDialogCancel>Cancel</AlertDialogCancel>
                             <AlertDialogAction
-                              onClick={() => handleDeleteStage(stage.id, stage.name, stageLeads.length)}
+                              onClick={() => handleDeleteStage(stage.id, stage.name)}
                               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                             >
                               Delete stage

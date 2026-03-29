@@ -244,13 +244,9 @@ export function AddNoteForm({
 export function LeadHeader({
   workspaceSlug,
   lead,
-  boardName,
-  stageName,
 }: {
   workspaceSlug: string
   lead: Lead
-  boardName: string
-  stageName: string
 }) {
   const isArchived = lead.status === 'archived'
 

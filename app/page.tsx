@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useCallback, useState } from 'react'
 import Link from 'next/link'
-import { ArrowRight, Check, Zap } from 'lucide-react'
+import { ArrowRight, Check } from 'lucide-react'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 

@@ -1,5 +1,6 @@
 'use client'
 
+import { useMemo } from 'react'
 import Link from 'next/link'
 import { ArrowRight, Clock } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
@@ -22,12 +23,27 @@ interface LeadsListProps {
   status?: string
 }
 
+function getDaysSinceUpdated(updatedAt: string | null): number | null {
+  if (!updatedAt) return null
+  const now = new Date()
+  const updated = new Date(updatedAt)
+  return Math.floor((now.getTime() - updated.getTime()) / 86400000)
+}
+
 export function LeadsList({ workspaceSlug, initialItems, initialCursor, q, status }: LeadsListProps) {
   const { items, hasMore, isPending, loadMore } = usePagination({
     initialItems,
     initialCursor,
     fetcher: (cursor) => fetchLeadsPage(workspaceSlug, { cursor, q, status }),
   })
+
+  const daysMap = useMemo(() => {
+    const map = new Map<string, number | null>()
+    items.forEach(lead => {
+      map.set(lead.id, getDaysSinceUpdated(lead.updated_at))
+    })
+    return map
+  }, [items])
 
   if (items.length === 0) return null
 
@@ -50,9 +66,7 @@ export function LeadsList({ workspaceSlug, initialItems, initialCursor, q, statu
             </thead>
             <tbody className="divide-y divide-border">
               {items.map((lead) => {
-                const days = lead.updated_at
-                  ? Math.floor((Date.now() - new Date(lead.updated_at).getTime()) / 86400000)
-                  : null
+                const days = daysMap.get(lead.id)
                 return (
                   <tr key={lead.id} className="group hover:bg-muted/40 transition-colors">
                     <td className="px-4 py-3 font-medium text-foreground max-w-[180px] truncate">
