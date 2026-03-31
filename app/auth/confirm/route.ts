@@ -7,7 +7,9 @@ export async function GET(request: Request) {
   const token_hash = searchParams.get('token_hash')
   const type = searchParams.get('type') as EmailOtpType | null
   const code = searchParams.get('code')
-  const next = searchParams.get('next') ?? '/workspaces'
+  const rawNext = searchParams.get('next') ?? '/workspaces'
+  // Prevent open redirect — only allow relative paths
+  const next = rawNext.startsWith('/') && !rawNext.startsWith('//') ? rawNext : '/workspaces'
 
   const forwardedHost = request.headers.get('x-forwarded-host')
   const isLocalEnv = process.env.NODE_ENV === 'development'
@@ -20,16 +22,16 @@ export async function GET(request: Request) {
 
   const supabase = await createClient()
 
-  // PKCE flow — token_hash starts with "pkce_" or a code param is present
-  if (code || (token_hash && token_hash.startsWith('pkce_'))) {
-    const { error } = await supabase.auth.exchangeCodeForSession(code ?? token_hash!)
+  // PKCE flow — authorization code from OAuth or magic-link redirect
+  if (code) {
+    const { error } = await supabase.auth.exchangeCodeForSession(code)
     if (error) {
       return redirect(`/auth/error?message=${encodeURIComponent(error.message)}`)
     }
     return redirect(next)
   }
 
-  // OTP / magic-link flow
+  // OTP / email confirmation flow
   if (!token_hash || !type) {
     return redirect(`/auth/error?message=${encodeURIComponent('Invalid confirmation link.')}`)
   }

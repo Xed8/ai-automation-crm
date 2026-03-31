@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import { Trash2 } from 'lucide-react'
+import { Trash2, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { deleteWorkspace } from '@/app/actions/workspaces'
 import { Button } from '@/components/ui/button'
@@ -96,7 +96,14 @@ export function DeleteWorkspaceButton({ workspaceSlug, workspaceName, variant = 
             disabled={!confirmed || isPending}
             onClick={handleDelete}
           >
-            {isPending ? 'Deleting…' : 'Delete workspace'}
+            {isPending ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Deleting…
+              </>
+            ) : (
+              'Delete workspace'
+            )}
           </Button>
         </AlertDialogFooter>
       </AlertDialogContent>

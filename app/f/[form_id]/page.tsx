@@ -1,5 +1,7 @@
+export const revalidate = 60
+
 import Link from 'next/link'
-import { redirect } from 'next/navigation'
+import { redirect, notFound } from 'next/navigation'
 import { submitPublicForm } from '@/app/actions/forms'
 import { createPrivilegedServerClient } from '@/lib/supabase/privileged'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -22,12 +24,16 @@ export default async function PublicFormPage({
   const supabase = await createPrivilegedServerClient()
   const { data: form } = await supabase
     .from('lead_forms')
-    .select('name, workspaces(name)')
+    .select('name, is_active, workspaces(name)')
     .eq('id', form_id)
     .single()
 
-  const formTitle = form?.name ?? 'Contact Us'
-  const workspaceName = (form?.workspaces as { name?: string } | null)?.name ?? null
+  if (!form || !form.is_active) {
+    notFound()
+  }
+
+  const formTitle = form.name ?? 'Contact Us'
+  const workspaceName = (form.workspaces as { name?: string } | null)?.name ?? null
 
   const messageClassName =
     status === 'success'
@@ -58,28 +64,28 @@ export default async function PublicFormPage({
           }}>
             <div className="space-y-2">
               <Label htmlFor="firmName">Company / Firm Name *</Label>
-              <Input id="firmName" name="firmName" required placeholder="Acme Corp" />
+              <Input id="firmName" name="firmName" required placeholder="Acme Corp" maxLength={200} />
             </div>
 
             <div className="space-y-2">
               <Label htmlFor="contactName">Your Name</Label>
-              <Input id="contactName" name="contactName" placeholder="John Doe" />
+              <Input id="contactName" name="contactName" placeholder="John Doe" maxLength={100} />
             </div>
 
             <div className="gap-4 grid grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="email">Email Address</Label>
-                <Input id="email" name="email" type="email" placeholder="john@example.com" />
+                <Input id="email" name="email" type="email" placeholder="john@example.com" maxLength={254} />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="phone">Phone Number</Label>
-                <Input id="phone" name="phone" type="tel" placeholder="(555) 123-4567" />
+                <Input id="phone" name="phone" type="tel" placeholder="(555) 123-4567" maxLength={20} />
               </div>
             </div>
 
             <div className="space-y-2">
               <Label htmlFor="message">Message / Scope of Work</Label>
-              <Textarea id="message" name="message" placeholder="How can we help?" rows={4} />
+              <Textarea id="message" name="message" placeholder="How can we help?" rows={4} maxLength={5000} />
             </div>
 
             <Button type="submit" className="w-full">Submit Request</Button>

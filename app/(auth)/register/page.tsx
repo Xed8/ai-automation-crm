@@ -2,6 +2,8 @@ import Link from "next/link"
 import { signup } from "@/app/actions/auth"
 import { AuthSubmitButton } from '@/components/shared/auth-submit-button'
 
+export const dynamic = 'force-static'
+
 export default async function RegisterPage({
   searchParams,
 }: {

@@ -59,6 +59,7 @@ export function CreateWebhookForm({ workspaceSlug }: { workspaceSlug: string }) 
           type="url"
           placeholder="https://example.com/api/webhooks/crm"
           required
+          maxLength={500}
           disabled={isPending}
         />
       </div>
@@ -68,6 +69,7 @@ export function CreateWebhookForm({ workspaceSlug }: { workspaceSlug: string }) 
           id="secret"
           name="secret"
           placeholder="Optional. Leave blank to generate one."
+          maxLength={200}
           disabled={isPending}
         />
       </div>

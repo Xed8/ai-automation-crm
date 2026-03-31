@@ -19,7 +19,6 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { ScrollArea } from '@/components/ui/scroll-area'
 
-const supabase = createClient()
 type Notification = Tables<'notifications'>
 
 interface NotificationBellProps {
@@ -29,10 +28,12 @@ interface NotificationBellProps {
 }
 
 export function NotificationBell({ workspaceSlug, userId, workspaceId }: NotificationBellProps) {
+  const supabase = createClient()
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [unreadCount, setUnreadCount] = useState(0)
   const [isOpen, setIsOpen] = useState(false)
   const [isPending, startTransition] = useTransition()
+  const [isNavigating, setIsNavigating] = useState(false)
   const [cursor, setCursor] = useState<string | null>(null)
   const [hasMore, setHasMore] = useState(false)
   const router = useRouter()
@@ -88,6 +89,8 @@ export function NotificationBell({ workspaceSlug, userId, workspaceId }: Notific
   }, [userId, workspaceId])
 
   const handleNotificationClick = (notification: Notification) => {
+    if (isNavigating) return
+    setIsNavigating(true)
     startTransition(async () => {
       if (!notification.is_read) {
         await markNotificationAsRead(workspaceSlug, notification.id)
@@ -98,6 +101,7 @@ export function NotificationBell({ workspaceSlug, userId, workspaceId }: Notific
         router.push(notification.link)
       }
       setIsOpen(false)
+      setIsNavigating(false)
     })
   }
 

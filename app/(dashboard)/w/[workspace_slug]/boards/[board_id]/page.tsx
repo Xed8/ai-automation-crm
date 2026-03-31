@@ -3,9 +3,13 @@ import { createPrivilegedServerClient } from '@/lib/supabase/privileged'
 import { requireWorkspaceScope } from '@/lib/workspace-context'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { KanbanBoard } from '@/components/leads/kanban-board'
 import { DeleteBoardButton } from '@/components/leads/delete-board-button'
 import { AddStageForm } from '@/components/leads/add-stage-form'
+import dynamic from 'next/dynamic'
+
+const KanbanBoard = dynamic(() => import('@/components/leads/kanban-board').then(mod => mod.KanbanBoard), {
+  loading: () => <div className="flex h-64 items-center justify-center"><div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"></div></div>
+})
 
 
 export default async function BoardPipelinePage({

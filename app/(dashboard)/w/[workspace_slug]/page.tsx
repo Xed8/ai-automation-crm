@@ -1,12 +1,12 @@
+export const revalidate = 60
+
 import Link from 'next/link'
-import { redirect } from 'next/navigation'
 import {
   AlertCircle,
   ArrowRight,
   CheckCircle2,
   Clock,
   FileInput,
-  FlaskConical,
   KanbanSquare,
   Settings2,
   UsersRound,
@@ -15,8 +15,8 @@ import {
 import { Button } from '@/components/ui/button'
 import { createPrivilegedServerClient } from '@/lib/supabase/privileged'
 import { requireWorkspaceScope } from '@/lib/workspace-context'
-import { createTestLead } from '@/app/actions/crm'
 import { OnboardingChecklist } from '@/components/shared/onboarding-checklist'
+import { CreateTestLeadButton } from '@/components/leads/create-test-lead-button'
 
 type PriorityCard = {
   tone: 'warning' | 'success'
@@ -246,19 +246,7 @@ export default async function WorkspaceIndexPage({
             </div>
             <div className="mt-4 flex flex-wrap gap-2">
               {(boardCount ?? 0) > 0 && (leadCount ?? 0) === 0 && (
-                <form action={async () => {
-                  'use server'
-                  const result = await createTestLead(workspace_slug)
-                  if (result?.error) {
-                    redirect(`/w/${workspace_slug}?error=${encodeURIComponent(result.error)}`)
-                  }
-                  redirect(`/w/${workspace_slug}/leads/${result.leadId}`)
-                }}>
-                  <Button type="submit" size="sm" className="gap-2">
-                    <FlaskConical className="h-3.5 w-3.5" />
-                    Create test lead
-                  </Button>
-                </form>
+                <CreateTestLeadButton workspaceSlug={workspace_slug} />
               )}
               <Button asChild size="sm" variant={priority.tone === 'success' ? 'default' : 'outline'} className="gap-2">
                 <Link href={priority.href}>

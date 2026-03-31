@@ -1,6 +1,8 @@
 import Link from 'next/link'
 import { ArrowLeft } from 'lucide-react'
 
+export const dynamic = 'force-static'
+
 export default function AuthLayout({
   children,
 }: {

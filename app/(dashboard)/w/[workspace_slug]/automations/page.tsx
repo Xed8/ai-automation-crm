@@ -1,11 +1,23 @@
+export const revalidate = 60
+
 import { Zap } from 'lucide-react'
 import { createPrivilegedServerClient } from '@/lib/supabase/privileged'
 import { requireWorkspaceScope } from '@/lib/workspace-context'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { RuleBuilder } from '@/components/automations/rule-builder'
-import { AutomationActions } from '@/components/automations/automation-actions'
-import { TemplateLibrary } from '@/components/automations/template-library'
+import dynamic from 'next/dynamic'
+
+const RuleBuilder = dynamic(() => import('@/components/automations/rule-builder').then(mod => mod.RuleBuilder), {
+  loading: () => <div className="flex h-32 items-center justify-center"><div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent"></div></div>
+})
+
+const AutomationActions = dynamic(() => import('@/components/automations/automation-actions').then(mod => mod.AutomationActions), {
+  loading: () => <div className="h-9 w-24 animate-pulse rounded-md bg-muted"></div>
+})
+
+const TemplateLibrary = dynamic(() => import('@/components/automations/template-library').then(mod => mod.TemplateLibrary), {
+  loading: () => <div className="flex h-32 items-center justify-center"><div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent"></div></div>
+})
 
 type Json = Record<string, unknown>
 

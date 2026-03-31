@@ -1,3 +1,5 @@
+export const revalidate = 60
+
 import { Users } from 'lucide-react'
 import { createPrivilegedServerClient } from '@/lib/supabase/privileged'
 import { requireWorkspaceScope } from '@/lib/workspace-context'

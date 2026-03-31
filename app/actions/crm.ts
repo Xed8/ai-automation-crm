@@ -18,7 +18,8 @@ const SAMPLE_STAGES = [
 ]
 
 export async function seedSamplePipeline(workspaceSlug: string) {
-  const { workspace } = await requireWorkspaceScope(workspaceSlug)
+  const { workspace, role } = await requireWorkspaceScope(workspaceSlug)
+  if (!['owner', 'admin'].includes(role)) return { error: 'Insufficient permissions.' }
   const supabase = await createPrivilegedServerClient()
 
   const { data: board, error: boardError } = await supabase
@@ -32,7 +33,6 @@ export async function seedSamplePipeline(workspaceSlug: string) {
     .single()
 
   if (boardError || !board) {
-    console.error('Failed to seed board:', boardError)
     return { error: 'Failed to create sample pipeline.' }
   }
 
@@ -46,7 +46,6 @@ export async function seedSamplePipeline(workspaceSlug: string) {
   )
 
   if (stagesError) {
-    console.error('Failed to seed stages:', stagesError)
     return { error: 'Failed to create sample stages.' }
   }
 
@@ -56,7 +55,8 @@ export async function seedSamplePipeline(workspaceSlug: string) {
 }
 
 export async function createBoard(workspaceSlug: string, formData: FormData) {
-  const { workspace } = await requireWorkspaceScope(workspaceSlug)
+  const { workspace, role } = await requireWorkspaceScope(workspaceSlug)
+  if (!['owner', 'admin'].includes(role)) return { error: 'Insufficient permissions.' }
   const supabase = await createPrivilegedServerClient()
 
   const name = (formData.get('name') as string | null)?.trim() ?? ''
@@ -73,7 +73,6 @@ export async function createBoard(workspaceSlug: string, formData: FormData) {
     .single()
 
   if (error || !board) {
-    console.error('Failed to create board:', error)
     return { error: 'Failed to create board.' }
   }
 
@@ -111,7 +110,6 @@ export async function createStage(workspaceSlug: string, boardId: string, formDa
     .limit(1)
 
   if (stageLookupError) {
-    console.error('Failed to inspect existing stages:', stageLookupError)
     return { error: 'Failed to determine stage order.' }
   }
 
@@ -127,7 +125,6 @@ export async function createStage(workspaceSlug: string, boardId: string, formDa
     })
 
   if (error) {
-    console.error('Failed to create stage:', error)
     return { error: 'Failed to create stage.' }
   }
 
@@ -140,16 +137,28 @@ export async function createLead(workspaceSlug: string, boardId: string, stageId
   const { workspace, user } = await requireWorkspaceScope(workspaceSlug)
   const supabase = await createPrivilegedServerClient()
 
-  const firmName = formData.get('firmName') as string
-  const contactName = formData.get('contactName') as string | null
-  const email = formData.get('email') as string | null
-  const phone = formData.get('phone') as string | null
+  const firmName = (formData.get('firmName') as string | null)?.trim() ?? ''
+  if (!firmName) return { error: 'Firm name is required.' }
+
+  const contactName = (formData.get('contactName') as string | null)?.trim() || null
+  const email = (formData.get('email') as string | null)?.trim() || null
+  const phone = (formData.get('phone') as string | null)?.trim() || null
   const value = formData.get('value') ? parseFloat(formData.get('value') as string) : null
+
+  // Verify stageId belongs to boardId within this workspace (prevents cross-workspace injection)
+  const { data: stage } = await supabase
+    .from('stages')
+    .select('id')
+    .eq('id', stageId)
+    .eq('board_id', boardId)
+    .eq('workspace_id', workspace.id)
+    .single()
+  if (!stage) return { error: 'Invalid stage.' }
 
   // Phase 8: Quota Enforcement
   const { checkQuota, recordUsage } = await import('@/lib/billing/quotas')
   const quota = await checkQuota(workspace.id, 'leads', 1)
-  
+
   if (!quota.allowed) {
     return { error: quota.reason || 'Upgrade required to create more leads.' }
   }
@@ -170,7 +179,6 @@ export async function createLead(workspaceSlug: string, boardId: string, stageId
     .single()
 
   if (error || !lead) {
-    console.error('Failed to create lead:', error)
     return { error: 'Failed to create lead.' }
   }
 
@@ -198,7 +206,7 @@ export async function createLead(workspaceSlug: string, boardId: string, stageId
   })
 
   // Phase 8: Increment Usage
-  recordUsage(workspace.id, 'leads', 1).catch(console.error)
+  recordUsage(workspace.id, 'leads', 1).catch(() => {})
 
   revalidatePath(`/w/${workspaceSlug}/boards/${boardId}`)
   return { success: true }
@@ -215,7 +223,6 @@ export async function updateLeadStage(workspaceSlug: string, boardId: string, le
     .eq('workspace_id', workspace.id)
 
   if (error) {
-    console.error('Failed to update lead stage:', error)
     return { error: 'Failed to update lead stage.' }
   }
 
@@ -227,6 +234,8 @@ export async function updateLeadStage(workspaceSlug: string, boardId: string, le
     action_type: 'stage_changed',
     metadata: { to_stage_id: newStageId }
   })
+
+  evaluateAutomations(workspace.id, boardId, 'stage_changed', leadId, { new_stage_id: newStageId })
 
   emitOutboundWebhook(workspace.id, 'lead.stage_changed', {
     lead_id: leadId,
@@ -257,7 +266,6 @@ export async function createTask(workspaceSlug: string, leadId: string, formData
   }).select('id').single()
 
   if (error || !task) {
-    console.error('Failed to create task:', error)
     return { error: 'Failed to create task.' }
   }
 
@@ -293,7 +301,6 @@ export async function toggleTask(workspaceSlug: string, taskId: string, complete
     .eq('workspace_id', workspace.id)
 
   if (error) {
-    console.error('Failed to toggle task:', error)
     return { error: 'Failed to update task.' }
   }
 
@@ -324,7 +331,6 @@ export async function changeLeadStage(workspaceSlug: string, leadId: string, for
     .eq('workspace_id', workspace.id)
 
   if (error) {
-    console.error('Failed to change lead stage:', error)
     return { error: 'Failed to change stage.' }
   }
 
@@ -374,7 +380,6 @@ export async function updateLead(workspaceSlug: string, leadId: string, formData
     .eq('workspace_id', workspace.id)
 
   if (error) {
-    console.error('Failed to update lead:', error)
     return { error: 'Failed to update lead.' }
   }
 
@@ -410,6 +415,25 @@ export async function archiveLead(workspaceSlug: string, leadId: string) {
   revalidatePath(`/w/${workspaceSlug}/leads`)
   if (lead.board_id) revalidatePath(`/w/${workspaceSlug}/boards/${lead.board_id}`)
   return { success: true, newStatus }
+}
+
+export async function bulkDeleteLeads(workspaceSlug: string, leadIds: string[]) {
+  const { workspace } = await requireWorkspaceScope(workspaceSlug)
+  if (!leadIds.length) return { error: 'No leads selected.' }
+
+  const supabase = await createPrivilegedServerClient()
+
+  const { error } = await supabase
+    .from('leads')
+    .delete()
+    .in('id', leadIds)
+    .eq('workspace_id', workspace.id)
+
+  if (error) return { error: 'Failed to delete leads.' }
+
+  revalidatePath(`/w/${workspaceSlug}/leads`)
+  revalidatePath(`/w/${workspaceSlug}/boards`)
+  return { success: true, deletedCount: leadIds.length }
 }
 
 export async function createTestLead(workspaceSlug: string) {
@@ -456,7 +480,7 @@ export async function createTestLead(workspaceSlug: string) {
     metadata: { note: 'Test lead created from dashboard.' },
   })
 
-  recordUsage(workspace.id, 'leads', 1).catch(console.error)
+  recordUsage(workspace.id, 'leads', 1).catch(() => {})
   revalidatePath(`/w/${workspaceSlug}`)
   revalidatePath(`/w/${workspaceSlug}/leads`)
   revalidatePath(`/w/${workspaceSlug}/boards/${board.id}`)
@@ -464,7 +488,8 @@ export async function createTestLead(workspaceSlug: string) {
 }
 
 export async function renameStage(workspaceSlug: string, stageId: string, name: string) {
-  const { workspace } = await requireWorkspaceScope(workspaceSlug)
+  const { workspace, role } = await requireWorkspaceScope(workspaceSlug)
+  if (!['owner', 'admin'].includes(role)) return { error: 'Insufficient permissions.' }
   const supabase = await createPrivilegedServerClient()
 
   const trimmed = name.trim()
@@ -492,7 +517,8 @@ export async function renameStage(workspaceSlug: string, stageId: string, name: 
 }
 
 export async function deleteStage(workspaceSlug: string, stageId: string) {
-  const { workspace } = await requireWorkspaceScope(workspaceSlug)
+  const { workspace, role } = await requireWorkspaceScope(workspaceSlug)
+  if (!['owner', 'admin'].includes(role)) return { error: 'Insufficient permissions.' }
   const supabase = await createPrivilegedServerClient()
 
   const { data: stage, error: fetchError } = await supabase
@@ -547,7 +573,8 @@ export async function deleteStage(workspaceSlug: string, stageId: string) {
 }
 
 export async function deleteBoard(workspaceSlug: string, boardId: string) {
-  const { workspace } = await requireWorkspaceScope(workspaceSlug)
+  const { workspace, role } = await requireWorkspaceScope(workspaceSlug)
+  if (!['owner', 'admin'].includes(role)) return { error: 'Insufficient permissions.' }
   const supabase = await createPrivilegedServerClient()
 
   const { error } = await supabase
@@ -557,7 +584,6 @@ export async function deleteBoard(workspaceSlug: string, boardId: string) {
     .eq('workspace_id', workspace.id)
 
   if (error) {
-    console.error('Failed to delete board:', error)
     return { error: 'Failed to delete board.' }
   }
 
@@ -570,7 +596,8 @@ export async function createNote(workspaceSlug: string, leadId: string, formData
   const { workspace, user } = await requireWorkspaceScope(workspaceSlug)
   const supabase = await createPrivilegedServerClient()
 
-  const content = formData.get('content') as string
+  const content = (formData.get('content') as string | null)?.trim() ?? ''
+  if (!content) return { error: 'Note content is required.' }
 
   const { error } = await supabase
     .from('notes')
@@ -582,7 +609,6 @@ export async function createNote(workspaceSlug: string, leadId: string, formData
     })
 
   if (error) {
-    console.error('Failed to create note:', error)
     return { error: 'Failed to create note.' }
   }
 
@@ -603,20 +629,32 @@ const ACTIVITY_PAGE_SIZE = 30
 
 export async function fetchLeadsPage(
   workspaceSlug: string,
-  opts: { cursor: string | null; q?: string; status?: string }
+  opts: { cursor: string | null; q?: string; status?: string; sortBy?: string; sortOrder?: 'asc' | 'desc' }
 ) {
   const { workspace } = await requireWorkspaceScope(workspaceSlug)
   const supabase = await createPrivilegedServerClient()
+
+  const validSortColumns: Record<string, string> = {
+    firm_name: 'firm_name',
+    contact_name: 'contact_name',
+    value: 'value',
+    created_at: 'created_at',
+    updated_at: 'updated_at',
+  }
+  const column = validSortColumns[opts.sortBy ?? ''] ?? 'created_at'
+  const ascending = opts.sortOrder === 'asc'
 
   let query = supabase
     .from('leads')
     .select('*, boards(name), stages(name)')
     .eq('workspace_id', workspace.id)
-    .order('created_at', { ascending: false })
+    .order(column, { ascending })
+    .order('id', { ascending })          // tie-breaker for stable pagination
     .limit(LEADS_PAGE_SIZE + 1)
 
   if (opts.q?.trim()) {
-    const term = opts.q.trim()
+    // Escape special PostgREST ilike characters to prevent filter injection
+    const term = opts.q.trim().replace(/[%_\\]/g, '\\$&')
     query = query.or(`firm_name.ilike.%${term}%,contact_name.ilike.%${term}%,email.ilike.%${term}%`)
   }
 
@@ -627,7 +665,15 @@ export async function fetchLeadsPage(
   }
 
   if (opts.cursor) {
-    query = query.lt('created_at', opts.cursor)
+    // Cursor encodes the sort column value + id for stable keyset pagination
+    const [cursorVal, cursorId] = opts.cursor.split('|')
+    if (cursorId) {
+      query = ascending
+        ? query.or(`${column}.gt.${cursorVal},and(${column}.eq.${cursorVal},id.gt.${cursorId})`)
+        : query.or(`${column}.lt.${cursorVal},and(${column}.eq.${cursorVal},id.lt.${cursorId})`)
+    } else {
+      query = ascending ? query.gt(column, cursorVal) : query.lt(column, cursorVal)
+    }
   }
 
   const { data, error } = await query
@@ -636,7 +682,10 @@ export async function fetchLeadsPage(
 
   const hasMore = data.length > LEADS_PAGE_SIZE
   const items = hasMore ? data.slice(0, LEADS_PAGE_SIZE) : data
-  const nextCursor = hasMore ? items[items.length - 1].created_at : null
+  const lastItem = items[items.length - 1]
+  const nextCursor = hasMore && lastItem
+    ? `${lastItem[column as keyof typeof lastItem]}|${lastItem.id}`
+    : null
 
   return { items, nextCursor }
 }
@@ -668,6 +717,56 @@ export async function fetchActivityPage(
   const hasMore = data.length > ACTIVITY_PAGE_SIZE
   const items = hasMore ? data.slice(0, ACTIVITY_PAGE_SIZE) : data
   const nextCursor = hasMore ? items[items.length - 1].created_at : null
+
+  return { items, nextCursor }
+}
+
+const BOARDS_PAGE_SIZE = 50
+
+export async function fetchBoardsPage(
+  workspaceSlug: string,
+  opts: { cursor: string | null; sortBy?: string; sortOrder?: 'asc' | 'desc' }
+) {
+  const { workspace } = await requireWorkspaceScope(workspaceSlug)
+  const supabase = await createPrivilegedServerClient()
+
+  const validSortColumns: Record<string, string> = {
+    name: 'name',
+    created_at: 'created_at',
+    updated_at: 'updated_at',
+  }
+  const column = validSortColumns[opts.sortBy ?? ''] ?? 'created_at'
+  const ascending = opts.sortOrder === 'asc'
+
+  let query = supabase
+    .from('boards')
+    .select('*')
+    .eq('workspace_id', workspace.id)
+    .order(column, { ascending })
+    .order('id', { ascending })          // tie-breaker for stable pagination
+    .limit(BOARDS_PAGE_SIZE + 1)
+
+  if (opts.cursor) {
+    const [cursorVal, cursorId] = opts.cursor.split('|')
+    if (cursorId) {
+      query = ascending
+        ? query.or(`${column}.gt.${cursorVal},and(${column}.eq.${cursorVal},id.gt.${cursorId})`)
+        : query.or(`${column}.lt.${cursorVal},and(${column}.eq.${cursorVal},id.lt.${cursorId})`)
+    } else {
+      query = ascending ? query.gt(column, cursorVal) : query.lt(column, cursorVal)
+    }
+  }
+
+  const { data, error } = await query
+
+  if (error) return { items: [], nextCursor: null }
+
+  const hasMore = data.length > BOARDS_PAGE_SIZE
+  const items = hasMore ? data.slice(0, BOARDS_PAGE_SIZE) : data
+  const lastItem = items[items.length - 1]
+  const nextCursor = hasMore && lastItem
+    ? `${lastItem[column as keyof typeof lastItem]}|${lastItem.id}`
+    : null
 
   return { items, nextCursor }
 }

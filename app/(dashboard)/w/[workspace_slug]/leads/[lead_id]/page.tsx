@@ -2,10 +2,14 @@ import { createPrivilegedServerClient } from '@/lib/supabase/privileged'
 import { requireWorkspaceScope } from '@/lib/workspace-context'
 import { fetchActivityPage } from '@/app/actions/crm'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { AIActions } from '@/components/leads/ai-actions'
 import { TaskList } from '@/components/leads/task-list'
 import { ActivityLog } from '@/components/leads/activity-log'
 import { LeadHeader, EditLeadForm, MoveStageForm, AddNoteForm } from '@/components/leads/lead-detail-forms'
+import dynamic from 'next/dynamic'
+
+const AIActions = dynamic(() => import('@/components/leads/ai-actions').then(mod => mod.AIActions), {
+  loading: () => <div className="flex h-9 items-center gap-2"><div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-primary border-t-transparent"></div><span className="text-sm text-muted-foreground">Loading...</span></div>
+})
 
 export default async function LeadDetailPage({
   params,

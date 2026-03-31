@@ -1,3 +1,5 @@
+export const revalidate = 60
+
 export default function DashboardLayout({
   children,
 }: {

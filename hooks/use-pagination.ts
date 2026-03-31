@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useState, useEffect, useTransition } from 'react'
 
 interface PaginationOptions<T> {
   initialItems: T[]
@@ -12,6 +12,12 @@ export function usePagination<T>({ initialItems, initialCursor, fetcher }: Pagin
   const [items, setItems] = useState<T[]>(initialItems)
   const [cursor, setCursor] = useState<string | null>(initialCursor)
   const [isPending, startTransition] = useTransition()
+
+  // Reset when the server passes new initial data (e.g. sort/filter change)
+  useEffect(() => {
+    setItems(initialItems)
+    setCursor(initialCursor)
+  }, [initialItems, initialCursor])
 
   const hasMore = cursor !== null
 

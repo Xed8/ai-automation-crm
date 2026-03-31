@@ -1,36 +1,29 @@
-import Link from 'next/link'
-import { redirect } from 'next/navigation'
-import { ArrowRight, KanbanSquare, Layers3, Plus, Sparkles } from 'lucide-react'
-import { createBoard, seedSamplePipeline } from '@/app/actions/crm'
-import { createPrivilegedServerClient } from '@/lib/supabase/privileged'
+export const revalidate = 60
+
+import { KanbanSquare, Layers3, Sparkles } from 'lucide-react'
 import { requireWorkspaceScope } from '@/lib/workspace-context'
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { DeleteBoardButton } from '@/components/leads/delete-board-button'
+import { fetchBoardsPage } from '@/app/actions/crm'
+import { Card, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
+import { CreateBoardForm } from '@/components/leads/create-board-form'
+import { SamplePipelineButton } from '@/components/leads/sample-pipeline-button'
+import { BoardsTable } from '@/components/leads/boards-table'
 
 export default async function BoardsIndexPage({
   params,
   searchParams,
 }: {
   params: Promise<{ workspace_slug: string }>;
-  searchParams: Promise<{ message?: string; status?: string }>;
+  searchParams: Promise<{ message?: string; status?: string; sortBy?: string; sortOrder?: string }>;
 }) {
   const { workspace_slug } = await params
-  const { message, status } = await searchParams
+  const { message, status, sortBy, sortOrder } = await searchParams
   const { workspace } = await requireWorkspaceScope(workspace_slug)
-  const supabase = await createPrivilegedServerClient()
 
-  const { data: boards, error } = await supabase
-    .from('boards')
-    .select('*')
-    .eq('workspace_id', workspace.id)
-    .order('created_at', { ascending: false })
-
-  if (error) {
-    return <div className="p-6 text-destructive">Failed to load boards</div>
-  }
+  const { items: boards, nextCursor } = await fetchBoardsPage(workspace_slug, { 
+    cursor: null, 
+    sortBy, 
+    sortOrder: sortOrder as 'asc' | 'desc' | undefined 
+  })
 
   const messageClassName =
     status === 'success'
@@ -50,9 +43,11 @@ export default async function BoardsIndexPage({
               </p>
             </div>
           </div>
-          <div className="rounded-[1.25rem] border border-border/70 bg-background/65 px-4 py-3 text-sm text-muted-foreground">
-            Create your first board to unlock stages and forms.
-          </div>
+          {boards.length === 0 && (
+            <div className="rounded-[1.25rem] border border-border/70 bg-background/65 px-4 py-3 text-sm text-muted-foreground">
+              Create your first board to unlock stages and forms.
+            </div>
+          )}
         </div>
 
         <div className="mt-6 grid gap-3 sm:grid-cols-2">
@@ -61,7 +56,7 @@ export default async function BoardsIndexPage({
               <span className="text-xs uppercase tracking-[0.24em] text-muted-foreground">Boards</span>
               <KanbanSquare className="h-4 w-4 text-primary" />
             </div>
-            <div className="mt-3 text-3xl font-semibold">{boards.length}</div>
+            <div className="mt-3 text-3xl font-semibold">{boards.length}{nextCursor ? '+' : ''}</div>
           </div>
           <div className="surface-card rounded-[1.5rem] px-4 py-4">
             <div className="flex items-center justify-between">
@@ -75,47 +70,7 @@ export default async function BoardsIndexPage({
 
       {message ? <div className={messageClassName}>{message}</div> : null}
 
-      <Card className="surface-card">
-        <CardHeader>
-          <CardTitle>Create board</CardTitle>
-          <CardDescription>
-            Start here. After creating a board, open it and add at least one stage.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form
-            className="grid gap-4 xl:grid-cols-[1fr_1.3fr_auto]"
-            action={async (formData) => {
-              'use server'
-
-              const result = await createBoard(workspace_slug, formData)
-
-              if (result?.error) {
-                redirect(`/w/${workspace_slug}/boards?status=error&message=${encodeURIComponent(result.error)}`)
-              }
-
-              redirect(`/w/${workspace_slug}/boards/${result.boardId}`)
-            }}
-          >
-            <div className="space-y-2">
-              <Label htmlFor="name">Board name</Label>
-              <Input id="name" name="name" placeholder="Inbound Sales Pipeline" required />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="description">Description</Label>
-              <Input id="description" name="description" placeholder="Track website and outbound opportunities." />
-            </div>
-
-            <div className="flex items-end">
-              <Button type="submit" className="w-full justify-between xl:w-auto">
-                Create board
-                <Plus className="h-4 w-4" />
-              </Button>
-            </div>
-          </form>
-        </CardContent>
-      </Card>
+      <CreateBoardForm workspaceSlug={workspace_slug} />
 
       {boards.length === 0 ? (
         <div className="grid gap-4 md:grid-cols-2">
@@ -140,55 +95,16 @@ export default async function BoardsIndexPage({
               </CardDescription>
             </CardHeader>
             <CardFooter>
-              <form
-                className="w-full"
-                action={async () => {
-                  'use server'
-                  const result = await seedSamplePipeline(workspace_slug)
-                  if (result?.error) {
-                    redirect(`/w/${workspace_slug}/boards?status=error&message=${encodeURIComponent(result.error)}`)
-                  }
-                  redirect(`/w/${workspace_slug}/boards/${result.boardId}`)
-                }}
-              >
-                <Button type="submit" className="w-full justify-between">
-                  Load sample pipeline
-                  <Sparkles className="h-4 w-4" />
-                </Button>
-              </form>
+              <SamplePipelineButton workspaceSlug={workspace_slug} />
             </CardFooter>
           </Card>
         </div>
       ) : (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {boards.map((board) => (
-            <Card key={board.id} className="surface-card surface-card-hover">
-              <CardHeader>
-                <CardTitle className="text-2xl">{board.name}</CardTitle>
-                <CardDescription className="mt-2">
-                  {board.description || 'No description provided'}
-                </CardDescription>
-                <div className="mt-4 rounded-[1.25rem] bg-secondary/70 px-4 py-4 text-sm text-muted-foreground">
-                  Created {board.created_at ? new Date(board.created_at).toLocaleDateString() : 'recently'}.
-                  Open this board next to add stages.
-                </div>
-              </CardHeader>
-              <CardFooter className="gap-2">
-                <Button asChild className="flex-1 justify-between">
-                  <Link href={`/w/${workspace.slug}/boards/${board.id}`}>
-                    Open board
-                    <ArrowRight className="h-4 w-4" />
-                  </Link>
-                </Button>
-                <DeleteBoardButton
-                  workspaceSlug={workspace_slug}
-                  boardId={board.id}
-                  boardName={board.name}
-                />
-              </CardFooter>
-            </Card>
-          ))}
-        </div>
+        <BoardsTable
+          workspaceSlug={workspace_slug}
+          initialItems={boards}
+          initialCursor={nextCursor}
+        />
       )}
     </div>
   )

@@ -40,21 +40,24 @@ export function TeamInviteForm({ workspaceSlug }: { workspaceSlug: string }) {
           type="email"
           placeholder="colleague@agency.com"
           required
+          maxLength={254}
           className="h-9 text-sm"
           disabled={isPending}
         />
       </div>
-      <div className="space-y-1.5">
-        <Label className="text-xs">Role</Label>
-        <select
-          name="role"
-          defaultValue="member"
-          disabled={isPending}
-          className="h-9 rounded-md border border-input bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-        >
-          <option value="member">Member</option>
-          <option value="admin">Admin</option>
-        </select>
+      <div className="flex items-end">
+        <div className="space-y-1.5">
+          <Label className="text-xs">Role</Label>
+          <select
+            name="role"
+            defaultValue="member"
+            disabled={isPending}
+            className="h-9 rounded-md border border-input bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+          >
+            <option value="member">Member</option>
+            <option value="admin">Admin</option>
+          </select>
+        </div>
       </div>
       <div className="flex items-end">
         <Button type="submit" size="sm" className="h-9 w-full" disabled={isPending}>

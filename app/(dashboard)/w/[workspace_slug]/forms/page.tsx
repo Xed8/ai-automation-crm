@@ -1,8 +1,8 @@
+export const revalidate = 60
+
 import Link from 'next/link'
 import { headers } from 'next/headers'
-import { redirect } from 'next/navigation'
-import { ArrowUpRight, FileInput, Globe, Plus, ServerCog, Shield, TriangleAlert } from 'lucide-react'
-import { createLeadForm } from '@/app/actions/forms'
+import { ArrowUpRight, FileInput, Globe, ServerCog, Shield, TriangleAlert } from 'lucide-react'
 import { createPrivilegedServerClient } from '@/lib/supabase/privileged'
 import { requireWorkspaceScope } from '@/lib/workspace-context'
 import { CopyButton } from '@/components/shared/copy-button'
@@ -16,9 +16,8 @@ import {
 } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { CreateForm } from '@/components/forms/create-form'
 
 function getBaseUrlFromHeaders(host: string | null, forwardedProto: string | null) {
   if (!host) {
@@ -194,68 +193,13 @@ export default async function FormsIndexPage({
         </CardHeader>
         <CardContent>
           {canCreateForm ? (
-            <form
-              className="grid gap-4 xl:grid-cols-[1.2fr_0.9fr_0.9fr_auto]"
-              action={async (formData) => {
-                'use server'
-
-                const result = await createLeadForm(workspace_slug, formData)
-
-                if (result?.error) {
-                  redirect(`/w/${workspace_slug}/forms?status=error&message=${encodeURIComponent(result.error)}`)
-                }
-
-                redirect(`/w/${workspace_slug}/forms?status=success&message=${encodeURIComponent('Form created. You can now connect Google Forms or external websites.')}`)
-              }}
-            >
-              <div className="space-y-2">
-                <Label htmlFor="name">Form name</Label>
-                <Input id="name" name="name" placeholder="Google Form Intake" required />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="boardId">Board</Label>
-                <select
-                  id="boardId"
-                  name="boardId"
-                  defaultValue={defaultBoardId}
-                  className="flex h-11 w-full rounded-2xl border border-input/80 bg-background/85 px-4 py-3 text-sm shadow-sm ring-offset-background backdrop-blur-sm transition-colors focus-visible:border-ring focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/20 focus-visible:ring-offset-2"
-                >
-                  {boardOptions.map((board) => (
-                    <option key={board.id} value={board.id}>
-                      {board.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="stageId">Stage</Label>
-                <select
-                  id="stageId"
-                  name="stageId"
-                  defaultValue={defaultStageId}
-                  className="flex h-11 w-full rounded-2xl border border-input/80 bg-background/85 px-4 py-3 text-sm shadow-sm ring-offset-background backdrop-blur-sm transition-colors focus-visible:border-ring focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/20 focus-visible:ring-offset-2"
-                >
-                  {stageOptions.map((stage) => {
-                    const boardName = boardOptions.find((board) => board.id === stage.board_id)?.name ?? 'Board'
-
-                    return (
-                      <option key={stage.id} value={stage.id}>
-                        {boardName} {'->'} {stage.name}
-                      </option>
-                    )
-                  })}
-                </select>
-              </div>
-
-              <div className="flex items-end">
-                <Button type="submit" className="w-full justify-between xl:w-auto">
-                  Create form
-                  <Plus className="h-4 w-4" />
-                </Button>
-              </div>
-            </form>
+            <CreateForm
+              workspaceSlug={workspace_slug}
+              defaultBoardId={defaultBoardId}
+              defaultStageId={defaultStageId}
+              boards={boardOptions}
+              stages={stageOptions}
+            />
           ) : (
             <div className="rounded-[1.5rem] border border-dashed border-border/70 bg-secondary/40 p-4 text-sm text-muted-foreground">
               Create at least one board and one stage first. After that, you can create an intake form here and the Google Forms script will appear in settings.

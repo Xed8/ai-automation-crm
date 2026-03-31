@@ -1,3 +1,5 @@
+export const revalidate = 60
+
 import Link from 'next/link'
 import { ArrowRight, Building2, Layers3, Plus, TrendingUp } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'

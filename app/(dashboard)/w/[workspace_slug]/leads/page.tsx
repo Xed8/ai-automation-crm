@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic'
+
 import Link from 'next/link'
 import { BotMessageSquare, BriefcaseBusiness, CircleDollarSign, ArrowRight, Funnel, Search, TrendingUp } from 'lucide-react'
 import { requireWorkspaceScope } from '@/lib/workspace-context'
@@ -13,13 +15,19 @@ export default async function LeadsIndexPage({
   searchParams,
 }: {
   params: Promise<{ workspace_slug: string }>
-  searchParams: Promise<{ q?: string; status?: string }>
+  searchParams: Promise<{ q?: string; status?: string; sortBy?: string; sortOrder?: string }>
 }) {
   const { workspace_slug } = await params
-  const { q, status } = await searchParams
+  const { q, status, sortBy, sortOrder } = await searchParams
   const { workspace } = await requireWorkspaceScope(workspace_slug)
 
-  const { items: leads, nextCursor } = await fetchLeadsPage(workspace_slug, { cursor: null, q, status })
+  const { items: leads, nextCursor } = await fetchLeadsPage(workspace_slug, { 
+    cursor: null, 
+    q, 
+    status, 
+    sortBy, 
+    sortOrder: sortOrder as 'asc' | 'desc' | undefined 
+  })
 
   // Usage for progress bars
   const usage = await getWorkspaceUsage(workspace.id)
@@ -126,7 +134,7 @@ export default async function LeadsIndexPage({
       </section>
 
       {/* Search + filter bar */}
-      <form method="GET" className="flex flex-wrap gap-2">
+      <form method="GET" action={`/w/${workspace_slug}/leads`} className="flex flex-wrap gap-2">
         <div className="relative flex-1 min-w-48">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
           <Input

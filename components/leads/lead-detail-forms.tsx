@@ -122,19 +122,19 @@ export function EditLeadForm({
     <form onSubmit={handleSubmit} className="grid gap-3 sm:grid-cols-2">
       <div className="space-y-1.5">
         <Label htmlFor="firm_name" className="text-xs">Firm name *</Label>
-        <Input id="firm_name" name="firm_name" defaultValue={lead.firm_name} required className="h-8 text-sm" disabled={isPending} />
+        <Input id="firm_name" name="firm_name" defaultValue={lead.firm_name} required maxLength={200} className="h-8 text-sm" disabled={isPending} />
       </div>
       <div className="space-y-1.5">
         <Label htmlFor="contact_name" className="text-xs">Contact name</Label>
-        <Input id="contact_name" name="contact_name" defaultValue={lead.contact_name ?? ''} className="h-8 text-sm" disabled={isPending} />
+        <Input id="contact_name" name="contact_name" defaultValue={lead.contact_name ?? ''} maxLength={100} className="h-8 text-sm" disabled={isPending} />
       </div>
       <div className="space-y-1.5">
         <Label htmlFor="email" className="text-xs">Email</Label>
-        <Input id="email" name="email" type="email" defaultValue={lead.email ?? ''} className="h-8 text-sm" disabled={isPending} />
+        <Input id="email" name="email" type="email" defaultValue={lead.email ?? ''} maxLength={254} className="h-8 text-sm" disabled={isPending} />
       </div>
       <div className="space-y-1.5">
         <Label htmlFor="phone" className="text-xs">Phone</Label>
-        <Input id="phone" name="phone" defaultValue={lead.phone ?? ''} className="h-8 text-sm" disabled={isPending} />
+        <Input id="phone" name="phone" defaultValue={lead.phone ?? ''} maxLength={20} className="h-8 text-sm" disabled={isPending} />
       </div>
       <div className="space-y-1.5 sm:col-span-2">
         <Label htmlFor="value" className="text-xs">Deal value ($)</Label>
@@ -227,6 +227,7 @@ export function AddNoteForm({
         placeholder="Write a note…"
         rows={3}
         required
+        maxLength={5000}
         className="resize-none text-sm"
         value={content}
         onChange={(e) => setContent(e.target.value)}

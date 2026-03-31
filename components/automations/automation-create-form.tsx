@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from 'react'
 import { createAutomationRule } from '@/app/actions/automations'
+import { toast } from 'sonner'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -52,6 +53,7 @@ export function AutomationCreateForm({
         ;(e.target as HTMLFormElement).reset()
         setTrigger('lead_created')
         setAction('create_task')
+        toast.success('Automation created.')
       }
     })
   }
@@ -78,7 +80,7 @@ export function AutomationCreateForm({
           {/* Rule name */}
           <div className="space-y-1.5">
             <Label htmlFor="auto-name">Rule name</Label>
-            <Input id="auto-name" name="name" placeholder="e.g. Create follow-up task on new lead" required className="h-9 text-sm" />
+            <Input id="auto-name" name="name" placeholder="e.g. Create follow-up task on new lead" required maxLength={100} className="h-9 text-sm" />
           </div>
 
           {/* Board */}
@@ -143,6 +145,7 @@ export function AutomationCreateForm({
                 id="auto-task-title"
                 name="action_task_title"
                 placeholder="e.g. Send intro email"
+                maxLength={200}
                 className="h-8 text-sm"
                 required
               />
@@ -156,6 +159,7 @@ export function AutomationCreateForm({
                 id="auto-note"
                 name="action_note_content"
                 placeholder="e.g. Lead entered proposal stage — review required"
+                maxLength={2000}
                 className="h-8 text-sm"
                 required
               />

@@ -2,7 +2,7 @@
 
 import { useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import { Trash2 } from 'lucide-react'
+import { Trash2, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { deleteBoard } from '@/app/actions/crm'
 import { Button } from '@/components/ui/button'
@@ -68,9 +68,17 @@ export function DeleteBoardButton({ workspaceSlug, boardId, boardName, redirectA
           <AlertDialogCancel>Cancel</AlertDialogCancel>
           <AlertDialogAction
             onClick={handleDelete}
+            disabled={isPending}
             className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
           >
-            Delete board
+            {isPending ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Deleting…
+              </>
+            ) : (
+              'Delete board'
+            )}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

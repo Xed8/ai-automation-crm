@@ -134,6 +134,7 @@ export function ProfileForm({
               name="full_name"
               defaultValue={initialFullName}
               required
+              maxLength={100}
               placeholder="Your name"
             />
           </div>
@@ -147,6 +148,7 @@ export function ProfileForm({
               type="email"
               defaultValue={initialEmail}
               required
+              maxLength={254}
               placeholder="you@example.com"
             />
             <p className="text-xs text-muted-foreground">

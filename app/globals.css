@@ -118,6 +118,8 @@
   --foreground: 0 0% 95%;
   --card: 240 6% 7%;            /* #111118 */
   --card-foreground: 0 0% 95%;
+  --popover: 240 7% 8%;         /* #111118 — dark dropdown bg */
+  --popover-foreground: 0 0% 92%;
   --muted: 240 5% 12%;
   --muted-foreground: 240 5% 55%;
   --border: 240 5% 13%;
@@ -126,7 +128,7 @@
   --primary-foreground: 0 0% 100%;
   --secondary: 240 5% 12%;
   --secondary-foreground: 0 0% 95%;
-  --accent: 240 5% 12%;
+  --accent: 240 5% 15%;         /* subtle dark highlight on hover */
   --accent-foreground: 0 0% 95%;
   --destructive: 0 72% 51%;
   --destructive-foreground: 0 0% 100%;
@@ -273,6 +275,17 @@ body.lp-active {
     border-color: rgba(255,77,28,0.5) !important;
     outline: none;
     box-shadow: 0 0 0 3px rgba(255,77,28,0.08);
+  }
+  .dash select option {
+    background: #111118 !important;
+    color: #f0eeea !important;
+    padding: 8px !important;
+  }
+  .dash select option:hover,
+  .dash select option:checked,
+  .dash select option:focus {
+    background: rgba(255,77,28,0.4) !important;
+    color: #fff !important;
   }
   /* Inputs in dark dash */
   .dash input:not([type='submit']):not([type='checkbox']):not([type='radio']) {
